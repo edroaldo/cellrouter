@@ -1,5 +1,3 @@
-#--> OK. Analysis reproductible!
-
 ## StemID mouse bone marrow dataset ##
 setwd("~/Documents/Projects/CellRouter/Manuscript/Submission_1/scripts/stemid/")
 source('~/Documents/Projects/CellRouter/Manuscript/Submission_1/scripts/CellRouter_Class.R')
@@ -26,8 +24,8 @@ var <- apply(ndata, 1, var)
 var <- var[which(var > 0)]
 ndata <- ndata[names(var),]
 
-fdata <- t(fdata)
-write.csv(fdata, 'results/for_wishbone_fdata.csv') #dataset to compare to Wishbone
+#fdata <- t(fdata)
+#write.csv(fdata, 'results/for_wishbone_fdata.csv') #dataset to compare to Wishbone
 
 ### selecting genes to use as regulated along developmental trajectories
 pca <- prcomp(t(ndata), scale=TRUE, center=TRUE)
@@ -113,8 +111,9 @@ plotDRExpression(cellrouter, c('Mmp8', 'Mmp9', 'Cd52', 'Retnlg', 'Mxd1'), TRUE, 
 ##Erythroblast branch (Klf1-high subpopulation)
 p <- 'SP_20.SP_10'
 m2 <- plottr(cellrouter, p, x[[p]]$scores, cluster=TRUE, 1, 5, 5.5, paste('results/', p, 'up_diff_dynamics.pdf',sep=''))
+genelist <- c('Klf1', 'Gata1', 'Gata2', 'Rnf10', 'Snca')
+plottrajectories(cellrouter, p, genelist, rescale = TRUE, columns=1, width=4, height=2, filename='results/dynamics_curve2.pdf')
 
-plottrajectories(cellrouter, p, c('Mmp8', 'Ngp', 'Elane', 'Retnlg'), rescale = TRUE, columns=1, width=5, height=2, filename='results/dynamics_Klf1_high_TFs.pdf')
 
 #### Pathway enrichment analysis on selected trajectories
 ids <- get(load('ids.R'))
@@ -124,14 +123,13 @@ cellrouter <- pathwayenrichment(cellrouter, paths, 'mouse','org.Mm.eg.db', ids)
 enr <- pathwaycluster(cellrouter, cellrouter@pathwayenrichment$UP$GOBP, 10, TRUE, 5, 5, 'results/Supplementary_Table_2_GO.pdf')
 
 
-
 ## Validation of the CellRouter trajectory to neuthrophils using a time-course of neuthrophil differentiation
 ## please, source this function first:
-validate <- function(rep, geneList, x2, rescale, width, height, filename){
+validate <- function(rep, geneList, bla2, rescale, width, height, filename){
   plots <- list()
   x_axis <- c(0, 4, 8, 12, 24, 36, 48, 72, 96, 120)
   for(gene_id in geneList){
-    y_axis <- rep[grep(x2[gene_id], rownames(rep)),]
+    y_axis <- rep[grep(bla2[gene_id], rownames(rep)),]
     if(rescale){
       y_axis <- rescale(y_axis, newrange = c(0,1))
     }
@@ -152,17 +150,18 @@ validate <- function(rep, geneList, x2, rescale, width, height, filename){
   g1 <- ggplot(tables, aes(x=cells, y=Expression, group=gene, colour=gene)) +
     theme_bw() + geom_point() + geom_line(size=1) + xlab('time[h]') +
     guides(col=guide_legend(direction="vertical")) + #, nrow = 2
-    theme(panel.grid.major = element_xnk(), panel.grid.minor = element_xnk(),
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           legend.position = "right",
-          panel.border = element_xnk()) +
-    theme(axis.line.x = element_line(color="xck", size = 0.5),
-          axis.line.y = element_line(color="xck", size = 0.5))+
+          panel.border = element_blank()) +
+    theme(axis.line.x = element_line(color="black", size = 0.5),
+          axis.line.y = element_line(color="black", size = 0.5))+
     scale_color_manual("", values=rainbow(length(geneList)))
   print(g1)
   dev.off()
 }
 
-counts <- read.csv('rGSE84874_counts.txt', sep='\t', row.names = 1)
+
+counts <- read.csv('results/GSE84874_counts.txt', sep='\t', row.names = 1)
 samples <- data.frame(sample_id=colnames(counts), 
                       conditions=colnames(counts), 
                       replicates=c("REP1", "REP1", "REP1", "REP1", "REP1",
@@ -186,14 +185,6 @@ rep1 <- nCounts[,rownames(samples[which(samples$replicates == 'REP1'),])]
 rep2 <- nCounts[,rownames(samples[which(samples$replicates == 'REP2'),])]
 rep <- (rep1 + rep2) / 2
 
-ids <- get(load('ids.R'))
-geneList <- c('Mxd1', 'Cebpe')
-x <- ids[ids$external_gene_name %in% geneList,]
-x2 <- x$ensembl_gene_id
-names(x2) <- x$external_gene_name
-validate(rep, geneList, x2, rescale=TRUE, width=4, height=1.5, filename='results/Mxd1_Cebpe_genelist.pdf')
-plotAllGenes(rep, geneList, x2, cols = 2, width=5.5, height=3, filename='results/Mxd1_Cebpe_separate_genes.pdf')
-
 
 ids <- get(load('ids.R'))
 geneList <- c('Mxd1', 'Cebpe')
@@ -201,27 +192,9 @@ x <- ids[ids$external_gene_name %in% geneList,]
 x2 <- x$ensembl_gene_id
 names(x2) <- x$external_gene_name
 validate(rep, geneList, x2, rescale=TRUE, width=4, height=1.5, filename='results/Mxd1_Cebpe_genelist.pdf')
-plotAllGenes(rep, geneList, x2, cols = 2, width=5.5, height=3, filename='results/Mxd1_Cebpe_separate_genes.pdf')
 
-
-ids <- get(load('ids.R'))
 geneList <- c('Elane', 'Mmp8', 'Ngp', 'Retnlg')
 x <- ids[ids$external_gene_name %in% geneList,]
 x2 <- x$ensembl_gene_id
 names(x2) <- x$external_gene_name
 validate(rep, geneList, x2, rescale=TRUE, width=4, height=1.5, filename='results/Elane_genelist.pdf')
-plotAllGenes(rep, geneList, x2, cols = 2, width=5.5, height=3, filename='results/Elane_separate_genes.pdf')
-
-geneList <- names(scores)[1:5]
-x <- ids[ids$external_gene_name %in% geneList,]
-x2 <- x$ensembl_gene_id
-names(x2) <- x$external_gene_name
-validate(rep, geneList, x2, rescale=TRUE, width=4, height=1.5, filename='results/Scores_genelist.pdf')
-plotAllGenes(rep, geneList, x2, cols = 2, width=5.5, height=5, filename='results/Scores_separate_genes.pdf')         
-         
-ids <- get(load('ids.R'))
-geneList <- names(cellrouter@top.correlations$up$SP_20.SP_18)[1:5]
-x <- ids[ids$external_gene_name %in% geneList,]
-x2 <- x$ensembl_gene_id
-names(x2) <- x$external_gene_name
-validate(rep, geneList, x2, rescale=TRUE, width=4, height=1.5, filename='results/top_down_genelist.pdf')

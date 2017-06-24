@@ -94,6 +94,7 @@ write.table(cellrouter@graph$edges, file=filename, sep='\t', row.names=FALSE, co
 
 #selecting starting subpopulation
 sources <- c('SP_2')
+##all remaining subpopulations are targets
 targets <- setdiff(as.vector(cellrouter@sampTab$population), sources)
 methods <- c("euclidean", "maximum", "manhattan","canberra","binary", 'graph') #graph for distances in KNN
 cellrouter <- findpaths(cellrouter, libdir, paste(getwd(), 'results/paths', sep='/'), method="graph")
@@ -123,7 +124,7 @@ transitions <- c('SP_2.SP_8','SP_2.SP_11','SP_2.SP_4') #transitions to be analyz
 p <- 'SP_2.SP_4' #focus on lymphoid differentiation
 x <- grnscores(cellrouter, tfs, transitions, direction='both', flip=TRUE, q.up=0.8, q.down=0.2, dir.targets='up', columns=3, 7, 5, 'results/lineage_regulators_score')
 m2 <- plottr(cellrouter, p, x$SP_2.SP_4$scores, cluster=FALSE, 2, 8.5, 5, paste('results/', p, 'up_down_diff_dynamics.pdf',sep=''))
-plotpaths(cellrouter, transitions, c('Il12rb1', 'Satb1', 'Gata2', 'Klf1', 'Gfi1'), columns = 2, width=8, height = 5, file_prefix = 'results/Hlf_trajectories')
+plotpaths(cellrouter, transitions, c('Il12rb1', 'Satb1', 'Gata2', 'Klf1', 'Gfi1'), columns = 2, width=8, height = 5, file_prefix = 'results/selected_genes_trajectories')
 
 
 ids <- get(load('ids.R'))

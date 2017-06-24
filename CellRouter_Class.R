@@ -2554,11 +2554,10 @@ setMethod("plotpaths",
                   g1 <- ggplot(df, aes(x=cells, y=Expression, group=1, colour=population)) +
                     geom_point(size=5) + stat_smooth() + theme_bw() + ggtitle(paste(gene_id, path, sep='--')) +
                     scale_colour_manual(values = colors) + xlab("Trajectory") +
-                    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+                    theme(panel.grid.major = element_blank(),
+                          panel.grid.minor = element_blank(),
                           axis.text.x=element_blank(),
                           panel.background=element_blank(),
-                          panel.grid.major=element_blank(),
-                          panel.grid.minor=element_blank(),
                           plot.background=element_blank(),
                           panel.border=element_rect(fill = NA, colour=alpha('black', 1),size=1))
                   

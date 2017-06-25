@@ -4,11 +4,11 @@ source("~/Documents/Projects/CellRouter/Manuscript/Submission_1/scripts/utils_RN
 source('~/Documents/Projects/CellRouter/Manuscript/Submission_1/scripts/CellRouter_Class.R')
 libdir <- '~/Documents/Projects/CellRouter/Manuscript/Submission_1/scripts/CellRouter/'
 
-library('scLVM')
+#library('scLVM')
 library('Rtsne')
 library('DESeq2')
 
-#Uncompress the file counts.gz inside the mesoderm folder using: tar -xvzf counts.gz 
+#Uncompress the file counts.gz inside the folder mesoderm, using: tar -xvzf counts.gz 
 #to obtain the file 'counts.txt'
 # Folow the instructions below to reproduce the analysis
 
@@ -28,7 +28,7 @@ geneTab <- geneTab[!duplicated(geneTab$ensembl_gene_id),]
 rownames(geneTab) <- as.vector(geneTab$ensembl_gene_id)
 colnames(geneTab) <- c('id', 'symbol')
 expDat <- averageIds(nCounts, geneTab, 'symbol')
-save(expDat, file='norm_counts_geneSymbols_Nov302016.R')
+save(expDat, file='norm_counts_geneSymbols.R')
 
 #### convert list of high variable genes from ensembl ids to gene symbols
 ids <- get(load('ids.R'))
@@ -38,11 +38,11 @@ symbols <- intersect(names(symbols), rownames(expDat))
 genes<-symbols
 save(genes, file='variable_genes.R') #we also provide this gene list
 
-nCounts <- get(load('norm_counts_geneSymbols_Nov302016.R'))
+nCounts <- get(load('norm_counts_geneSymbols.R'))
 #var <- apply(nCounts, 1, var)
 #nCounts <- nCounts[which(var > 0),]
 
-### tSNE dimenionality reduction, as performed in original paper
+### tSNE dimenionality reduction using most variable genes, as performed in original paper
 cor.mat<-cor(nCounts[genes,],method="spearman")
 dissim<-(1-cor.mat)/2
 dist.mat<-as.dist(dissim)
@@ -58,7 +58,7 @@ save(m, file='rdimension.R') #we provide this file, to keep consistent with our 
 
 
 ###### Opening files to start the analysis ###
-#nCounts <- get(load('norm_counts_geneSymbols_Nov302016.R'))
+#nCounts <- get(load('norm_counts_geneSymbols.R'))
 #m <- get(load('rdimension.R'))
 nCounts <- nCounts[which(apply(nCounts, 1, var) > 0),]
 nCounts <- nCounts[rowMeans(nCounts) > 1,]
@@ -71,11 +71,12 @@ genes2use <- unique(c(genes2use, get(load('variable_genes.R'))))
 save(genes2use, file='genes2use.R')
 
 # This files were generated from the previous code. 
-nCounts <- get(load('norm_counts_geneSymbols_Nov302016.R'))
+nCounts <- get(load('norm_counts_geneSymbols.R'))
 genes2use <- get(load('genes2use.R'))
 m <- get(load('rdimension.R'))
 
-### GRN reconstruction ##
+# Gene regulatory network reconstruction using a correlation-based version of CLR
+# published in our previous work with CelNet (Cahan et al, Cell 2014)
 tfs <- find_tfs(species = 'Mm')
 grn <- globalGRN(nCounts[genes2use,], tfs, 5)
 colnames(grn)[1:2]<-c("TG", "TF");
@@ -101,11 +102,11 @@ write.table(cellrouter@graph$edges, file=filename, sep='\t', row.names=FALSE, co
 
 #selecting starting subpopulations
 sources <- c('SP_11', 'SP_6', 'SP_12') #mesoderm dynamics and endothelium to blood dynamics
+#remaining subpopulations will be targets
 targets <- setdiff(as.vector(cellrouter@sampTab$population), sources)
 methods <- c("euclidean", "maximum", "manhattan","canberra","binary", 'graph') #graph for distances in KNN
 cellrouter <- findpaths(cellrouter, libdir, paste(getwd(), 'results/paths', sep='/'), method="graph")
 save(cellrouter, file='results/CellRouter_Mesoderm.R')
-
 
 cellrouter <- get(load('results/CellRouter_Mesoderm.R'))
 ranks <- c('path_cost', 'path_flow', 'rank', 'length')
@@ -121,7 +122,6 @@ cellrouter <- topgenes(cellrouter, 0.85, 0.15)
 cellrouter <- smoothdynamics(cellrouter, names)
 cellrouter <- clusterGenesPseudotime(cellrouter, 5)
 save(cellrouter, file='results/CellRouter_Mesoderm_Processed.R')
-
 
 ## Loading cellrouter object with processed trajectories
 cellrouter <- get(load('results/CellRouter_Mesoderm_Processed.R'))

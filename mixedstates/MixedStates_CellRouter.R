@@ -9,8 +9,8 @@ library(tsne)
 
 ## The file 'Olsson_RSEM_SingleCellRNASeq.csv' is too big to upload to github.
 ## The original data can be downloaded from https://www.synapse.org/#!Synapse:syn4975057/files/
-## To make easier to reproduce the analysis, we uplodaed a cleaned version of this dataset into github('Olsson_clean_dataset.R')
-## therefore, the analysis can be started from the #START HERE line, below
+## To make easier to reproduce the analysis, we uplodaed a cleaned version of this dataset to github('Olsson_clean_dataset.R')
+## Therefore, the analysis can be started from the #START HERE line, below
 
 ###guideGenes <- read.csv('ICGS-s5.txt', sep='\t', row.names = 1)
 ###guideGenes <- guideGenes[-1,]
@@ -24,6 +24,7 @@ library(tsne)
 guideGenes <- read.csv('ICGS-s5.txt', sep='\t', row.names = 1)
 guideGenes <- guideGenes[-1,]
 ndata <- get(load('Olsson_clean_dataset.R'))
+
 pca <- prcomp(t(ndata), scale=TRUE, center=TRUE)
 loadings <- pca$rotation
 num_pc <- 5
@@ -64,7 +65,8 @@ plot(p1)
 dev.off()
 
 
-## Gene regulatory network reconstruction
+# Gene regulatory network reconstruction using a correlation-based version of CLR
+# published in our previous work with CelNet (Cahan et al, Cell 2014)
 tfs <- find_tfs(species = 'Mm')
 grn <- globalGRN(ndata[genes2use,], tfs, 5)
 colnames(grn)[1:2]<-c("TG", "TF");

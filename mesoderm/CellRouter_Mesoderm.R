@@ -9,6 +9,7 @@ library('Rtsne')
 library('DESeq2')
 
 #Uncompress the file counts.gz inside the folder mesoderm, using: tar -xvzf counts.gz 
+## The file counts.gz can also be downloaded from http://gastrulation.stemcells.cam.ac.uk/scialdone2016
 #to obtain the file 'counts.txt'
 # Folow the instructions below to reproduce the analysis
 

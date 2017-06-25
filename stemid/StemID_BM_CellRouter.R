@@ -4,7 +4,7 @@ source('~/Documents/Projects/CellRouter/Manuscript/Submission_1/scripts/CellRout
 source("~/Documents/Projects/CellRouter/Manuscript/Submission_1/scripts/utils_RNA_seq.R")
 
 libdir <- '~/Documents/Projects/CellRouter/Manuscript/Submission_1/scripts/CellRouter/'
-#1) Use tSNE plot exactly as in the original paper (Cell Stem Cell)
+#1) Use tSNE plot exactly as in the original paper (Grun et all, Cell Stem Cell 2016)
 #2) Remove chromossome names and average same gene symbols
 #3) Begin CellRouter analysis
 
@@ -35,7 +35,8 @@ quantile <- 0.975
 genes2use <- unique(as.vector(unlist(apply(loadings[,1:num_pc], 2, function(x){names(x[which(abs(x) >= quantile(x, quantile))])}))))
 
 
-#Gene regulatory network reconstruction
+# Gene regulatory network reconstruction using a correlation-based version of CLR
+# published in our previous work with CelNet (Cahan et al, Cell 2014)
 tfs <- find_tfs(species = 'Mm')
 grn <- globalGRN(ndata[genes2use, ], tfs, 5)
 colnames(grn)[1:2]<-c("TG", "TF");
@@ -89,7 +90,6 @@ save(cellrouter, file='results/CellRouter_StemID_Processed.R')
 ## Loading cellrouter object with processed trajectories
 cellrouter <- get(load('results/CellRouter_StemID_Processed.R'))
 
-
 ## GRN score for selected transitions
 transitions <- c('SP_20.SP_17','SP_20.SP_18','SP_20.SP_19', 'SP_20.SP_10')
 x <- grnscores(cellrouter, tfs, transitions, direction='up', q.up=14, dir.targets='up', 
@@ -123,7 +123,7 @@ cellrouter <- pathwayenrichment(cellrouter, paths, 'mouse','org.Mm.eg.db', ids)
 enr <- pathwaycluster(cellrouter, cellrouter@pathwayenrichment$UP$GOBP, 10, TRUE, 5, 5, 'results/Supplementary_Table_2_GO.pdf')
 
 
-## Validation of the CellRouter trajectory to neuthrophils using a time-course of neuthrophil differentiation
+## Validation of the CellRouter trajectory to neutrophils using a time-course of neuthrophil differentiation
 ## please, source this function first:
 validate <- function(rep, geneList, bla2, rescale, width, height, filename){
   plots <- list()

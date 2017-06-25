@@ -7,8 +7,9 @@ libdir <- '~/Documents/Projects/CellRouter/Manuscript/Submission_1/scripts/CellR
 library(scLVM)
 library(tsne)
 
-## The file 'Olsson_RSEM_SingleCellRNASeq.csv' is too big to upload to github.
+## The original file from Olsson et al, Nature 2016, is too big to upload to github.
 ## The original data can be downloaded from https://www.synapse.org/#!Synapse:syn4975057/files/
+## inside the folder "RNA-Seq Data"
 ## To make easier to reproduce the analysis, we uplodaed a cleaned version of this dataset to github('Olsson_clean_dataset.R')
 ## Therefore, the analysis can be started from the #START HERE line, below
 

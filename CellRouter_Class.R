@@ -2890,7 +2890,7 @@ meanexpressionsubpopulations <- function(object, geneList, column, filename, col
       theme(axis.text.x = element_text(size=rel(1), angle=45, hjust=1),
             panel.grid.minor = element_blank(),
             panel.grid.major = element_blank(),
-            axis.text.x=element_blank(),axis.ticks=element_blank(),
+            axis.ticks=element_blank(),
             panel.border=element_rect(fill = NA, colour=alpha('black', 1),size=1)) + ggtitle(g) +
       scale_fill_manual("", values=colors)
     
@@ -2939,7 +2939,7 @@ expressionsubpopulations <- function(object, geneList, column, filename, cols, w
       theme(axis.text.x = element_text(size=rel(1), angle=45, hjust=1),
             panel.grid.minor = element_blank(),
             panel.grid.major = element_blank(),
-            axis.text.x=element_blank(),axis.ticks=element_blank(),
+            axis.ticks=element_blank(),
             panel.border=element_rect(fill = NA, colour=alpha('black', 1),size=1)) + ggtitle(g) +
       scale_fill_manual("", values=colors)
     

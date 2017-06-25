@@ -33,7 +33,7 @@ ndata <- get(load('expData_gene_symbols_Feb182017.R'))
 m <- get(load('m.R')) 
 
 # Gene regulatory network reconstruction using a correlation-based version of CLR
-# published in our previous work with CelNet
+# published in our previous work with CelNet (Cahan et al, Cell 2014)
 library(igraph)
 tfs <- find_tfs(species = 'Mm')
 grn <- globalGRN(ndata, tfs, 5)
@@ -73,8 +73,8 @@ plot(matrix2[,1:2],col=colors,pch=19, cex=0.5, xlab='tSNE_1', ylab='tSNE_2', bty
 ###dput(pp, file="results/bloodnetView.R", control = "all")
 ##rgl.postscript("results/persp3dd_nolabels.pdf","pdf") 
 
-## For some reason, the first pdf plot look incomplete. However, when opened
-#into an image editor, the figure is fine. It could be some problems with handling
+## For some reason, the first pdf plot looks incomplete. However, when opened
+#in an image editor, the figure is fine. It could be some problems with handling
 #the pre-saved 3D coordinates.
 pp <- dget("results/bloodnetView.R")
 labels <- nodeLabels(cellrouter@sampTab,'community')

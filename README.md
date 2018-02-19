@@ -7,7 +7,7 @@ CellRouter is a multifaceted single-cell analysis platform that identifies compl
 
 Overview of CellRouter. Step (1) Starting from single cells representing multiple cell states, including stable and in transition, a gene regulatory network is reconstructed to identify putative gene regulatory relationships. Step (2) Subpopulations are then identified by a combination of learning the structure of the data and community detection algorithms. Step (3) High-resolution multi-state trajectories are identified from any subpopulation to any other, including intermediate and mature cell types. Step (4) Multi-state trajectories illustrate the divergence of single-cell transcriptomes along each trajectory progression. Identification of genes implicated in the dynamic biological process under study, such as differentiation, and identification of regulators driving or mediating cell-fate transitions at the gene and network level.
 
-### <a name="example">Examples</a>
+### Installation
 To use CellRouter, clone/download the repository. You also need to install several packages:
 ```R
 list.of.packages <- c('reshape','reshape2','pheatmap','clusterProfiler','ReactomePA','plotrix','tsne','igraph','ggplot2,"DESeq",'mclust','grid','scde','gplots','genefilter', 'Rtsne', 'DESeq2')
@@ -20,6 +20,8 @@ In case of a missing package after running the steps above, please install them 
 source('http://bioconductor.org/biocLite.R')
 biocLite('package_name')
 ```
+ ### <a name="example">Examples</a>
+
  1. [Analysis of mouse bone marrow single-cell RNA-seq profiling HSCs and mature cell types.](https://github.com/edroaldo/cellrouter/tree/master/stemid/StemID_BM_CellRouter.md)
  2. [Analysis of multi-lineage differentiation from human HSPCs (tutorial in progress...).](https://github.com/edroaldo/cellrouter/stemnet/tutorial2.html)
  3. [Reconstruction of cell reprogramming trajectories (tutorial in progress...).](https://github.com/edroaldo/cellrouter/stemnet/tutorial3.html)

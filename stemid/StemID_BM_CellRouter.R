@@ -1,9 +1,16 @@
+##Please, change directories accordingly
 ## StemID mouse bone marrow dataset ##
-setwd("~/Documents/Projects/CellRouter/Manuscript/Submission_1/scripts/stemid/")
+setwd("path/to/your/working/directory/stemid/")
+source('path/to/cellrouter/scripts/CellRouter_Class.R')
+#the folder 'CellRouter' contains Java libraries for CellRouter
+libdir <- 'path/to/cellrouter/scripts/CellRouter/'
+
 source('~/Documents/Projects/CellRouter/Manuscript/Submission_1/scripts/CellRouter_Class.R')
 source("~/Documents/Projects/CellRouter/Manuscript/Submission_1/scripts/utils_RNA_seq.R")
-
+setwd("~/Documents/Projects/CellRouter/Manuscript/Submission_1/scripts/stemid/")
 libdir <- '~/Documents/Projects/CellRouter/Manuscript/Submission_1/scripts/CellRouter/'
+
+
 #1) Use tSNE plot exactly as in the original paper (Grun et all, Cell Stem Cell 2016)
 #2) Remove chromossome names and average same gene symbols
 #3) Begin CellRouter analysis
@@ -14,10 +21,14 @@ libdir <- '~/Documents/Projects/CellRouter/Manuscript/Submission_1/scripts/CellR
 ##the processed files below). We did this to keep our analysis and interpretation consistent
 ##with the original publication
 
+#Files available at https://github.com/edroaldo/cellrouter/tree/master/stemid
+
+# Load files
 matrix <- get(load('results/matrix.R'))
 ndata <- get(load('results/normalized_expression.R'))
 fdata <- get(load('results/filtered_expression.R')) #not used here, but StemID filtered dataset
 colnames(matrix) <- c('tSNE1', 'tSNE2')
+
 
 ## removing chromossome names from gene names and averaging expression
 genes <- sapply(strsplit(rownames(ndata), split='__', fixed=TRUE), function(x){x[1]})
@@ -29,9 +40,6 @@ var <- apply(ndata, 1, var)
 var <- var[which(var > 0)]
 ndata <- ndata[names(var),]
 
-#fdata <- t(fdata)
-#write.csv(fdata, 'results/for_wishbone_fdata.csv') #dataset to compare to Wishbone
-
 ### selecting genes to use as regulated along developmental trajectories
 pca <- prcomp(t(ndata), scale=TRUE, center=TRUE)
 loadings <- pca$rotation
@@ -42,11 +50,7 @@ genes2use <- unique(as.vector(unlist(apply(loadings[,1:num_pc], 2, function(x){n
 
 # Gene regulatory network reconstruction using a correlation-based version of CLR
 # published in our previous work with CelNet (Cahan et al, Cell 2014)
-tfs <- find_tfs(species = 'Mm')
-grn <- globalGRN(ndata[genes2use, ], tfs, 5)
-colnames(grn)[1:2]<-c("TG", "TF");
-ggrn<- ig_tabToIgraph(grn, simplify = TRUE)
-save(ggrn, file='results/GRN.R')
+ggrn <- buildGRN('Mm', ndata, genes2use, 5, 'results/GRN.R')
 
 ##opening gene regulatory network object
 ggrn <- get(load('results/GRN.R'))
@@ -56,16 +60,14 @@ ggrn <- get(load('results/GRN.R'))
 cellrouter <- CellRouter(expdata=ndata, annotations=colnames(ndata))
 cellrouter@rdimension <- matrix
 cellrouter <- findsubpopulations(cellrouter, 5, 'jaccard', 'results/kNN_network.gml')
-cellrouter <- diffexpr(cellrouter, pvalue = 0.05)
+cellrouter <- diffexpr(cellrouter, column='population', pvalue = 0.05)
 markers <- findmarkers(cellrouter)
-write.csv(markers, file='results/Supplementary_Table_1_Gene_Signatures.csv')
+plotReducedDimension(cellrouter, 3.5, 3.5, filename='results/tSNE.pdf')
 
 genelist <- c('Ifitm1', 'Eef1a1', 'Klf1')
 boxplotGenes(cellrouter, genelist, 'population', 3, 12, 2, filename='results/Ifitm1_Eef1a1_distribution.pdf')
 
-
 ######## Trajectory Detection using CellRouter ###
-#k <- findK(cellrouter, 20)
 cellrouter <- createKNN(cellrouter, 10, 'jaccard', 'results/paths/kNN_network_trajectory.gml')
 filename <- "results/paths/cell_edge_weighted_network.txt"
 write.table(cellrouter@graph$edges, file=filename, sep='\t', row.names=FALSE, col.names = FALSE, quote=FALSE) #input network
@@ -95,17 +97,25 @@ save(cellrouter, file='results/CellRouter_StemID_Processed.R')
 ## Loading cellrouter object with processed trajectories
 cellrouter <- get(load('results/CellRouter_StemID_Processed.R'))
 
+###positive and negative controls
+genelist <- c('Klf1', 'Gata1', 'Gfi1b', 'Zfpm1',
+              'Cebpe', 'Gfi1', 'Cebpa', 'Sfpi1', 'Mmp8')
+paths <- c('SP_20.SP_10', 'SP_20.SP_18')
+plotPathHeatmap2(cellrouter, paths, genelist, TRUE, 2, 4, 2, 'results/')
+
+
 ## GRN score for selected transitions
 transitions <- c('SP_20.SP_17','SP_20.SP_18','SP_20.SP_19', 'SP_20.SP_10')
 x <- grnscores(cellrouter, tfs, transitions, direction='up', q.up=14, dir.targets='up', 
                columns=2, width=8, height=5, flip=FALSE, filename='results/lineage_regulators_score_up')
 p <- 'SP_20.SP_18'
 scores <- x[[p]]$scores
-m2 <- plottr(cellrouter, p, x[[p]]$scores, cluster=TRUE, 1, 5, 5.5, paste('results/', p, 'up_diff_dynamics.pdf',sep=''))
+m2 <- plottr(cellrouter, p, x[[p]]$scores, cluster=TRUE, 1, 2.5, 6, paste('results/', p, 'up_diff_dynamics.pdf',sep=''))
 
 paths <- c('SP_20.SP_18')
 plottrajectories(cellrouter, paths, names(scores)[1:5], rescale = TRUE, columns=1, width=5, height=2, filename='results/dynamics_curve.pdf')
 plottrajectories(cellrouter, paths, c('Mmp8', 'Ngp', 'Elane', 'Retnlg'), rescale = TRUE, columns=1, width=5, height=2, filename='results/dynamics_markers.pdf')
+plotDRExpression(cellrouter, c('Mmp8', 'Ngp', 'Elane', 'Retnlg'), TRUE, 2, 6, 4, 'results/Neurophil_StemID.pdf')
 
 plotbranch(cellrouter, 'up','SP_20.SP_10', 'SP_20.SP_18', 1, width=3, height=4, filename='results/SP_20.SP_10_branch_dynamics.pdf')
 plotbranch(cellrouter, 'up','SP_20.SP_18', 'SP_20.SP_10', 1, width=3, height=4, filename='results/SP_20.SP_18_branch_dynamics.pdf')
@@ -115,91 +125,15 @@ plotDRExpression(cellrouter, c('Mmp8', 'Mmp9', 'Cd52', 'Retnlg', 'Mxd1'), TRUE, 
 
 ##Erythroblast branch (Klf1-high subpopulation)
 p <- 'SP_20.SP_10'
-m2 <- plottr(cellrouter, p, x[[p]]$scores, cluster=TRUE, 1, 5, 5.5, paste('results/', p, 'up_diff_dynamics.pdf',sep=''))
+m2 <- plottr(cellrouter, p, x[[p]]$scores, cluster=TRUE, 1, 2.5, 6, paste('results/', p, 'up_diff_dynamics.pdf',sep=''))
 genelist <- c('Klf1', 'Gata1', 'Gata2', 'Rnf10', 'Snca')
 plottrajectories(cellrouter, p, genelist, rescale = TRUE, columns=1, width=4, height=2, filename='results/dynamics_curve2.pdf')
 
 
 #### Pathway enrichment analysis on selected trajectories
+#ids and cc are provided in the github webpage
 ids <- get(load('ids.R'))
 cc <- get(load('cell_cycle_genes_December_30_2015.R')) #cell cycle genes are removed
 paths <- c('SP_20.SP_10', 'SP_20.SP_19', 'SP_20.SP_17', 'SP_20.SP_18')
-cellrouter <- pathwayenrichment(cellrouter, paths, 'mouse','org.Mm.eg.db', ids)
+cellrouter <- pathwayenrichment(cellrouter, paths, cc, 'mouse','org.Mm.eg.db', ids)
 enr <- pathwaycluster(cellrouter, cellrouter@pathwayenrichment$UP$GOBP, 10, TRUE, 5, 5, 'results/Supplementary_Table_2_GO.pdf')
-
-
-## Validation of the CellRouter trajectory to neutrophils using a time-course of neuthrophil differentiation
-## please, source this function first:
-validate <- function(rep, geneList, bla2, rescale, width, height, filename){
-  plots <- list()
-  x_axis <- c(0, 4, 8, 12, 24, 36, 48, 72, 96, 120)
-  for(gene_id in geneList){
-    y_axis <- rep[grep(bla2[gene_id], rownames(rep)),]
-    if(rescale){
-      y_axis <- rescale(y_axis, newrange = c(0,1))
-    }
-    df <- data.frame(cells=x_axis, Expression=as.numeric(y_axis))
-    df$gene <- gene_id
-    df$cells <- factor(df$cells, levels=df$cells)
-    num_subpops <- length(unique(df$population))
-    plots[[gene_id]] <- df
-  }
-  tables <- do.call(rbind, plots)
-  labels <- x <- sapply(strsplit(as.vector(tables$gene), split='__', fixed=TRUE), function(x){x[1]})
-  tables$gene <- labels
-  if(!rescale){
-    tables$Expression <- rescale(tables$Expression, newrange = c(0,1))
-  }
-  
-  pdf(file=filename, width=width, height=height)
-  g1 <- ggplot(tables, aes(x=cells, y=Expression, group=gene, colour=gene)) +
-    theme_bw() + geom_point() + geom_line(size=1) + xlab('time[h]') +
-    guides(col=guide_legend(direction="vertical")) + #, nrow = 2
-    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-          legend.position = "right",
-          panel.border = element_blank()) +
-    theme(axis.line.x = element_line(color="black", size = 0.5),
-          axis.line.y = element_line(color="black", size = 0.5))+
-    scale_color_manual("", values=rainbow(length(geneList)))
-  print(g1)
-  dev.off()
-}
-
-
-counts <- read.csv('results/GSE84874_counts.txt', sep='\t', row.names = 1)
-samples <- data.frame(sample_id=colnames(counts), 
-                      conditions=colnames(counts), 
-                      replicates=c("REP1", "REP1", "REP1", "REP1", "REP1",
-                                   "REP1","REP1","REP1","REP1","REP1",
-                                   "REP2", "REP2", "REP2", "REP2", "REP2",
-                                   "REP2", "REP2", "REP2", "REP2", "REP2",
-                                   "R07", "R07", "R07","R07"),
-                      stringsAsFactors=FALSE)
-rownames(samples) <- samples$sample_id
-
-library(DESeq2)
-dds <- DESeqDataSetFromMatrix(countData =  counts,
-                              colData = samples,
-                              design = ~ replicates)
-dds <- dds[rowSums(counts(dds)) > 1,]
-dds <- estimateSizeFactors(dds) 
-dds <- DESeq(dds)
-nCounts <- counts(dds, normalized=TRUE)
-#average replicates
-rep1 <- nCounts[,rownames(samples[which(samples$replicates == 'REP1'),])]
-rep2 <- nCounts[,rownames(samples[which(samples$replicates == 'REP2'),])]
-rep <- (rep1 + rep2) / 2
-
-
-ids <- get(load('ids.R'))
-geneList <- c('Mxd1', 'Cebpe')
-x <- ids[ids$external_gene_name %in% geneList,]
-x2 <- x$ensembl_gene_id
-names(x2) <- x$external_gene_name
-validate(rep, geneList, x2, rescale=TRUE, width=4, height=1.5, filename='results/Mxd1_Cebpe_genelist.pdf')
-
-geneList <- c('Elane', 'Mmp8', 'Ngp', 'Retnlg')
-x <- ids[ids$external_gene_name %in% geneList,]
-x2 <- x$ensembl_gene_id
-names(x2) <- x$external_gene_name
-validate(rep, geneList, x2, rescale=TRUE, width=4, height=1.5, filename='results/Elane_genelist.pdf')

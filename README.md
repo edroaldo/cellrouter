@@ -1,7 +1,7 @@
 # CellRouter
 
 ### Introduction
-CellRouter is a multifaceted single-cell analysis platform that identifies complex cell-state transition trajectories by using flow networks to explore the subpopulation structure of multi-dimensional, single-cell omics data. CellRouter integrates subpopulation identification, multi-state trajectories, and gene regulatory networks (GRNs) to provide new insights into cell-state transitions during lineage diversification, convergence, or cell reprogramming. Please, take a look at the section Examples(#example), for current tutorials available to illustrate how to use CellRouter in your own work.
+CellRouter is a multifaceted single-cell analysis platform that identifies complex cell-state transition trajectories by using flow networks to explore the subpopulation structure of multi-dimensional, single-cell omics data. CellRouter integrates subpopulation identification, multi-state trajectories, and gene regulatory networks (GRNs) to provide new insights into cell-state transitions during lineage diversification, convergence, or cell reprogramming. For current tutorials illustrating how to use CellRouter, please take a look at the section [Examples](#example).
 
 ![](imgs/Figure_1.png)
 

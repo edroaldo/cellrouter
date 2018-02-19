@@ -20,9 +20,9 @@ In case of a missing package after running the steps above, please install them 
 source('http://bioconductor.org/biocLite.R')
 biocLite('package_name')
 ```
- 1. [Analysis of mouse bone marrow single-cell RNA-seq profiling HSCs and mature cell types](https://github.com/edroaldo/cellrouter/tree/master/stemid/StemID_BM_CellRouter.md)
- 2. [Analysis of multi-lineage differentiation from human HSPCs (tutorial in progress...)](https://github.com/edroaldo/cellrouter/stemnet/tutorial2.html)
- 3. [Reconstruction of cell reprogramming trajectories (tutorial in progress...)](https://github.com/edroaldo/cellrouter/stemnet/tutorial3.html)
+ 1. [Analysis of mouse bone marrow single-cell RNA-seq profiling HSCs and mature cell types.](https://github.com/edroaldo/cellrouter/tree/master/stemid/StemID_BM_CellRouter.md)
+ 2. [Analysis of multi-lineage differentiation from human HSPCs (tutorial in progress...).](https://github.com/edroaldo/cellrouter/stemnet/tutorial2.html)
+ 3. [Reconstruction of cell reprogramming trajectories (tutorial in progress...).](https://github.com/edroaldo/cellrouter/stemnet/tutorial3.html)
 
 
 ### Citation

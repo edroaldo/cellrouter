@@ -1,13 +1,13 @@
 # CellRouter
 
 ### Introduction
-CellRouter is a multifaceted single-cell analysis platform that identifies complex cell-state transition trajectories by using flow networks to explore the subpopulation structure of multi-dimensional, single-cell omics data. CellRouter integrates subpopulation identification, multi-state trajectories, and gene regulatory networks (GRNs) to provide new insights into cell-state transitions during lineage diversification, convergence, or cell reprogramming.
+CellRouter is a multifaceted single-cell analysis platform that identifies complex cell-state transition trajectories by using flow networks to explore the subpopulation structure of multi-dimensional, single-cell omics data. CellRouter integrates subpopulation identification, multi-state trajectories, and gene regulatory networks (GRNs) to provide new insights into cell-state transitions during lineage diversification, convergence, or cell reprogramming. Please, take a look at the section Examples(#example), for current tutorials available to illustrate how to use CellRouter in your own work.
 
 ![](imgs/Figure_1.png)
 
 Overview of CellRouter. Step (1) Starting from single cells representing multiple cell states, including stable and in transition, a gene regulatory network is reconstructed to identify putative gene regulatory relationships. Step (2) Subpopulations are then identified by a combination of learning the structure of the data and community detection algorithms. Step (3) High-resolution multi-state trajectories are identified from any subpopulation to any other, including intermediate and mature cell types. Step (4) Multi-state trajectories illustrate the divergence of single-cell transcriptomes along each trajectory progression. Identification of genes implicated in the dynamic biological process under study, such as differentiation, and identification of regulators driving or mediating cell-fate transitions at the gene and network level.
 
-### Examples
+### <a name="example">Examples</a>
 
 
 

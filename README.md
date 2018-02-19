@@ -20,7 +20,7 @@ In case of a missing package after running the steps above, please install them 
 source('http://bioconductor.org/biocLite.R')
 biocLite('package_name')
 ```
-Then, source the CellRouter class and make sure you provide the correct directory for the Java libraries inside the folder "CellRouter".
+Then, source the CellRouter class and make sure you provide the correct directory for the Java libraries inside the folder "CellRouter", as specified by the variable 'libdir'.
 
 ```R
 source('path/to/CellRouter_Class.R')

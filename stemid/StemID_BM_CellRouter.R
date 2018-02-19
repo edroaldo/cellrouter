@@ -5,12 +5,6 @@ source('path/to/cellrouter/scripts/CellRouter_Class.R')
 #the folder 'CellRouter' contains Java libraries for CellRouter
 libdir <- 'path/to/cellrouter/scripts/CellRouter/'
 
-source('~/Documents/Projects/CellRouter/Manuscript/Submission_1/scripts/CellRouter_Class.R')
-source("~/Documents/Projects/CellRouter/Manuscript/Submission_1/scripts/utils_RNA_seq.R")
-setwd("~/Documents/Projects/CellRouter/Manuscript/Submission_1/scripts/stemid/")
-libdir <- '~/Documents/Projects/CellRouter/Manuscript/Submission_1/scripts/CellRouter/'
-
-
 #1) Use tSNE plot exactly as in the original paper (Grun et all, Cell Stem Cell 2016)
 #2) Remove chromossome names and average same gene symbols
 #3) Begin CellRouter analysis

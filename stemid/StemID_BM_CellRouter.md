@@ -16,6 +16,7 @@ is already normalized and confounding sources of variation were properly
 removed.
 
     source('../CellRouter_Class.R')
+    libdir <- '../CellRouter/'
 
     matrix <- get(load('results/matrix.R'))
     ndata <- get(load('results/normalized_expression.R'))
@@ -82,7 +83,6 @@ We selected subpopulation 20 as the starting point for trajectory
 identification
 
     ######## Trajectory Detection using CellRouter ###
-    libdir <- '~/Documents/Projects/CellRouter/Manuscript/Submission_1/scripts/CellRouter/'
     cellrouter <- createKNN(cellrouter, 10, 'jaccard', 'results/paths/kNN_network_trajectory.gml')
 
 ![](StemID_BM_CellRouter_files/figure-markdown_strict/trajectory-1.png)
@@ -174,12 +174,9 @@ Downstream analysis
     ## matching gene symbols and annotations
 
     transitions <- c('SP_20.SP_17','SP_20.SP_18','SP_20.SP_19', 'SP_20.SP_10')
-    x <- grnscores(cellrouter, tfs, transitions, direction='up', q.up=14, dir.targets='up', 
-                   columns=2, width=8, height=5, flip=FALSE, filename='results/lineage_regulators_score_up')
+    x <- grnscores(cellrouter, tfs, transitions, direction='up', q.up=14, dir.targets='up', columns=2, width=8, height=5, flip=FALSE, filename='results/lineage_regulators_score_up')
 
     ## [1] 0
-    ## Klf13 regulates only itself
-    ## Tfeb regulates only itself
     ## [1] 0
     ## [1] 0
     ## [1] 0

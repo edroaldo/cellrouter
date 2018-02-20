@@ -1,14 +1,27 @@
 ##### CellRouter Class #####
 ## add require statements here
-## make clustering independent in CellRouter->Cluster memberships as input
-require('reshape')
-require('reshape2')
-require('pheatmap')
-require('clusterProfiler')
-require('ReactomePA')
-require('plotrix')
-require('tsne')
-require('igraph')
+suppressWarnings(suppressMessages(require('reshape')))
+suppressWarnings(suppressMessages(require('reshape2')))
+suppressWarnings(suppressMessages(require('pheatmap')))
+suppressWarnings(suppressMessages(require('clusterProfiler')))
+suppressWarnings(suppressMessages(require('ReactomePA')))
+suppressWarnings(suppressMessages(require('plotrix')))
+suppressWarnings(suppressMessages(require('tsne')))
+suppressWarnings(suppressMessages(require('igraph')))
+suppressWarnings(suppressMessages(library('plyr')))
+
+#library('ggnetwork')
+#library('GGally')
+#library('geomnet')
+#library('network')
+#library('sna')
+
+suppressWarnings(suppressMessages(require('ggplot2')))
+suppressWarnings(suppressMessages(require('mclust')))
+suppressWarnings(suppressMessages(require('grid')))
+suppressWarnings(suppressMessages(require('gplots')))
+suppressWarnings(suppressMessages(require('genefilter')))
+
 
 CellRouter <- setClass("CellRouter", slots=
                         c(expdata="data.frame", ndata="data.frame",
@@ -63,235 +76,52 @@ boxplotGenes <- function(object, geneList, column, cols, width=10, height=5, fil
   pdf(file=filename, width=width, height=height)
   multiplot(plotlist = plots, cols=cols)
   dev.off();
+  multiplot(plotlist = plots, cols=cols)
 }
 
 
-
-########################### GRN reconstruction code: from CellNet #############
-mat_zscores<-function# computes sqrt(zscore_row + zscore_col) .. see JJ Faith et al 2007
-(corrMat # does it matter whether TF is row or col?
-){
-  z_row<-scale(t(corrMat))**2;
-  cat(dim(z_row),"\n");
-  z_col<-scale(corrMat)**2;
-  cat(dim(z_col),"\n");
-  ans<-sqrt( z_row+z_col);
-  ans;  
-}
-
-globalGRN <- function(expr, tfs, threshold){
-  tfs <- intersect(tfs, rownames(expr))
-  corrAll <- abs(cor(t(expr)))
-  zscores <- mat_zscores(corrAll)
-  zscores <- zscores[,tfs]
-  grnTable <- extractRegulators(zscores, corrAll, rownames(expr), threshold)
-  
-  grnTable
-}
-
-#extract transcriptional regulators
-extractRegulators <- function(zscores, corrMatrix, genes, threshold){
-  targets <- vector()
-  regulators <- vector()
-  zscoresX <- vector()
-  correlations <- vector()
-  
-  targets <- rep('', 1e6)
-  regulators <- rep('', 1e6)
-  zscoresX <- rep('', 1e6)
-  correlations <- rep('', 1e6)
-  
-  i <- 1
-  j <- 1
-  for(target in genes){
-    x <- zscores[target,]
-    regs <- names(which(x > threshold))
-    if(length(regs) > 0){
-      zzs <- x[regs]
-      ncount <- length(zzs)
-      corrs <- corrMatrix[target, regs]
-      j <- i + ncount - 1
-      targets[i:j] <- rep(target, ncount)
-      regulators[i:j] <- regs
-      zscoresX[i:j] <- zzs
-      correlations[i:j] <- corrs
-      i <- j + 1
-    }
-  }
-  targets <- targets[1:j]
-  regulators <- regulators[1:j]
-  zscoresX <- zscoresX[1:j]
-  correlations <- correlations[1:j]
-  
-  data.frame(target=targets, reg=regulators, zscore=zscoresX, corr=correlations)
-}
-
-ig_scaleV<-function# return a vector of scaled sizes for a vector of verticies
-(vals, # values associated with verticies.  Can be number of sub-net nodes (members) or degree (number of edges))
- sf=5, # scaling factor, so sf=5 means that the maximum vertix will have cex=5)
- minVal=2
-){
-  vals<-vals-min(vals); # shift such that m
-  vals<-vals/max(vals); # scale such that range vals == 0,1
-  minVal+(vals*sf); # scale to sf
-}
-
-
-ig_tabToIgraph<-function# return a iGraph object
-(grnTab, ### table of TF, TF, maybe zscores, maybe correlations
- simplify=FALSE, # failed when iranges is loaded...
- directed=FALSE,
- weights=TRUE
-){
-  tmpAns<-as.matrix(grnTab[,c("TF", "TG")]);
-  regs<-as.vector(unique(grnTab[,"TF"]));
-  ###cat("Length TFs:", length(regs), "\n");
-  targs<-setdiff( as.vector(grnTab[,"TG"]), regs);
-  
-  ###  cat("Length TGs:", length(targs), "\n");
-  myRegs<-rep("Regulator", length=length(regs));
-  myTargs<-rep("Target", length=length(targs));
-  
-  types<-c(myRegs, myTargs);
-  verticies<-data.frame(name=c(regs,targs), label=c(regs,targs), type=types);
-  
-  iG<-graph.data.frame(tmpAns,directed=directed,v=verticies);
-  
-  if(weights){
-    #E(iG)$weight<-grnTab$weight;    
-    #E(iG)$weight<-as.numeric(as.character(grnTab$zscore));    
-    print(range(as.numeric(as.character(grn$corr))))
-    E(iG)$weight<-as.numeric(as.character(grnTab$corr));   
-    print(range(E(iG)$weight))
+violinsubpopulations3 <- function(expDat, sampTab, geneList, column, filename, cols, width=10, height=5){
+  plots <- list()
+  #sampTab <- object@sampTab
+  #graph <- object@graph
+  #expDat <- object@ndata
+  T0 <- expDat
+  allgenes <- data.frame()
+  for(g in geneList){
+    #cat(time, ' ', dim(T0), '\n')
+    genes <- as.data.frame(t(T0[g,]))
+    genes$gene <- g
+    genes$conditions <- as.vector(sampTab[,column])
+    genes.m <- melt(genes, id.var=c('gene',"conditions"))
+    allgenes <- rbind(allgenes, genes.m)
   }
   
-  if(simplify){
-    #iG<-igraph::simplify(iG, remove.loops = TRUE, remove.multiple = FALSE);
-    iG<-igraph::simplify(iG);
-    print(range(E(iG)$weight))
-  }
-  V(iG)$nEnts<-1;
+  #colors <- unique(sampTab$colors)
+  #names(colors) <- unique(sampTab[[column]])
+  allgenes$conditions <- factor(allgenes$conditions, levels=unique(allgenes$conditions))
+  #p <- ggplot(genes.m, aes(x=conditions, y=value, fill=conditions)) + geom_boxplot(alpha=.9, notch = TRUE) + 
+  p <- ggplot(allgenes, aes(x=conditions, y=value, fill=conditions)) + 
+    geom_violin(scale="width") + stat_summary(fun.y=mean,geom='point') + #geom_boxplot(alpha=.9) + 
+    #geom_jitter(position='identity', size=1) + 
+    theme_bw() + xlab("") + ylab("Gene expression") + theme(legend.position="none") +
+    theme(panel.grid.minor = element_blank(),
+          panel.grid.major = element_blank(),
+          axis.ticks=element_blank(),
+          axis.text.x=element_blank(),
+          panel.border=element_rect(fill = NA, colour=alpha('black', 0.75),size=1)) +
+    #scale_fill_manual("", values=colors) + 
+    facet_wrap(~variable, ncol = cols) + coord_flip()
+  #facet_grid(variable ~ ., scales='free') + coord_flip()
   
-  iG;
+  
+  #pdf(file=filename, width=10, height=7)
+  pdf(file=filename, width=width, height=height)
+  #multiplot(plotlist = plots, cols=cols)
+  print(p)
+  dev.off();
+  #multiplot(plotlist = plots, cols=cols)
+  gc()
 }
-
-
-
-ig_convertSmall<-function# change igraph attributes so that it is suitable for plotting a small GRN
-(iG, ###  in which regulators and targets are already specified
- rCol="#F46D43", # default color for regulator nodes
- tCol="#66C2A5",  # default color for target nodes
- vScale=1,
- exponent=2.6
-){
-  
-  E(iG)$color<-rgb(0,0,.5,alpha=.05);
-  
-  V(iG)[type=='Regulator']$label<-V(iG)[type=='Regulator']$name;
-  #V(iG)[type=='Target']$label<-"";
-  V(iG)$size<-ig_scaleV( igraph::degree(iG), sf=vScale, minVal=4);
-  V(iG)[type=='Regulator']$shape<-"csquare";
-  V(iG)[type=='Regulator']$label.color<-"black";
-  V(iG)[type=='Regulator']$label.cex<-.75;
-  V(iG)[type=='Target']$label.color<-"black";
-  V(iG)[type=='Target']$label.cex<-.5;
-  V(iG)[type=='Target']$shape<-"circle";
-  #V(iG)[type=='Target']$frame.color=NA;
-  #V(iG)$label.degree<- -1*pi/2;
-  #V(iG)$label.dist=.25;
-  nRegs<-length(V(iG)[type=='Regulator']$name);
-  nTargs<-length(V(iG)[type=='Target']$name);
-  #rCols<-unlist(lapply(rep(rCol, nRegs), mp_makeTransparent ) );
-  rCols<-rep(rCol, nRegs);
-  tCols<-rep(tCol, nTargs);
-  #tCols<-unlist(lapply(rep(tCol, nTargs), mp_makeTransparent ) );
-  V(iG)[type=='Regulator']$color<-rCols;
-  V(iG)[type=='Target']$color<-tCols;  
-  #iG$layout<-layout.lgl#layout.fruchterman.reingold(iG, niter=10000)#layout.fruchterman.reingold(iG);
-  
-  iG;
-}
-mp_assignColors<-function # takes a vector of values and returns a vecotr of colors (low=blue, high=red)
-(vect){
-  require(gplots);
-  xcols<-rev(heat.colors(length(vect))) #bluered(length(vect));
-  mycols<-rep('', length(vect));
-  mycols[order(vect)]<-xcols;
-  mycols;
-}
-
-
-
-ig_NiceGraph<-function# returns a pretty graph given a grnTab and expression data
-(object,
- myG,
- p,# result of running induced.subgraph(graphX, v=genes), and ig_convertSmall
- vLabels='Regulator'
- # bold=NULL){
-){
-  #  myG<-ig_convertSmall(myG);
-  # calculate correlations between TF->TG
-  expDat <- object@ndata
-  lEdges<-length(E(myG));
-  myCors<-rep(0, length=lEdges);
-  edgeColors<-rep("lightblue", length=lEdges);
-  for(i in seq(lEdges)){
-    edgeI<-V(myG)$name[get.edge(myG, i)];
-    tf<-edgeI[1];
-    tg<-edgeI[2];
-    #cat(tf, "->", tg,":");
-    myCors[i]<-sign(cor(as.numeric(expDat[tf,]), as.numeric(expDat[tg,])));
-    if(myCors[i]>0){
-      edgeColors[i]<-"red";
-    }
-  }
-  E(myG)$color<-edgeColors;  
-  E(myG)$arrow.size=.2;
-  
-  ## node colors
-  genes<-V(myG)$name;
-  genes <- intersect(names(object@correlation[[p]]), genes)
-  #geneVals<-apply(expDat[genes,], 1, mean);
-  geneVals<-object@correlation[[p]][genes]
-  V(myG)$color<-cRamp2(geneVals)#mp_assignColors(geneVals);
-  
-  # node size
-  outdegree<-igraph::degree(myG, mode='out');
-  V(myG)$size<-ig_scaleV( outdegree, sf=10, 4);
-  
-    #V(myG)[V(myG)]$label<-'';
-    # node labels
-    if(length(vLabels)==1){
-      if(vLabels=="Target"){
-        V(myG)[V(myG)$type=="Regulator"]$label<-'';
-      }
-      else{
-        if(vLabels=="Regulator"){
-          V(myG)[V(myG)$type=="Target"]$label<-'';
-        }
-      }
-    }
-    else{
-      others<-setdiff(V(myG)$name, vLabels);
-      xi<-match(others, V(myG)$name);
-      V(myG)[xi]$label<-'';
-    }
-
-  if(FALSE){
-    # label face
-    if(!is.null(bold)){
-      xi<-match(bold, V(myG)$name);
-      cat(xi,"\n");
-      V(myG)[xi]$label.font=2;
-    }
-  }
-  
-  myG;
-}
-
-
-
-############### end of GRN code #######
 
 ### Function to initialize a CellRouter class with the expression data
 setMethod("initialize", 
@@ -366,7 +196,238 @@ cGrad <- function(x, num_colors){
   apply(cols, 1, function(xt)rgb(xt[1], xt[2], xt[3], maxColorValue=255))
 }
 
-## Implement function to reduce dimension first ####
+
+### Discovering supopulation structure ##
+setGeneric("createKNNannotated", function(object, k=5, sim.type="jaccard", filename="graph_clusters.gml", ...) standardGeneric("createKNNannotated"))
+setMethod("createKNNannotated",
+          signature = "CellRouter",
+          definition = function(object, k, sim.type, filename, ...){
+            
+            suppressWarnings(suppressMessages(library('cccd')))
+            suppressWarnings(suppressMessages(library('proxy'))) # Library of similarity/dissimilarity measures for 'dist()'
+            matrix <- object@rdimension
+            sampTab <- object@sampTab
+            
+            print('building k-nearest neighbors graph')
+            dm <- as.matrix(dist(matrix))
+            h <- nng(dx=dm,k=k)
+            V(h)$name <- rownames(matrix)
+            if(sim.type == 'jaccard'){
+              sim <- similarity.jaccard(h, vids=V(h), loops=FALSE)
+            }else if(sim.type == 'invlog'){
+              sim <- similarity.invlogweighted(h, vids=V(h))
+            }
+            rownames(sim) <- V(h)$name
+            colnames(sim) <- V(h)$name
+            
+            edges <- as.data.frame(get.edgelist(h))
+            rownames(edges) <- paste(edges$V1, edges$V2, sep='_')
+            edges$weight <- 0
+            for(i in 1:nrow(edges)){
+              edge <- edges[i,]
+              from <- as.character(edge$V1)
+              to <- as.character(edge$V2)
+              metric <- as.numeric(sim[from, to])
+              index <- paste(from, to, sep='_')
+              edges[index, 'weight'] <- metric
+            }
+            E(h)$weight <- edges$weight
+            
+            ## Community detection to discover subpopulation structure
+            print('discoverying subpopulation structure')
+            #comms <- multilevel.community(as.undirected(h), weights = E(h)$weight)
+            V(h)[rownames(sampTab)]$comms <- as.vector(sampTab$conditions) #cluster->celltype
+            cell.comms <- split(sampTab, sampTab$conditions)
+            cell.comms <- lapply(cell.comms, rownames)
+            #cell.comms <- commToNames(comms, 'SP') #SP means SubPopulations
+            allcells <- as.vector(unlist(cell.comms))
+            
+            
+            ## Making sure that color mappings are correct
+            sampTab <- sampTab[allcells,] #changesorder of cells in the table
+            sampTab$population <- ''
+            sampTab$colors <- ''
+            colorvector <- 1:length(cell.comms)
+            comm.colors <- cRampClust(colorvector, length(colorvector))
+            names(comm.colors) <- names(cell.comms)
+            for(comm in names(cell.comms)){
+              sampTab[cell.comms[[comm]], 'population'] <- comm
+              sampTab[cell.comms[[comm]], 'colors'] <- comm.colors[comm]
+            }
+            sampTab$community <- as.vector(unlist(lapply(strsplit(sampTab$population, split="_"), "[", 2)))
+            
+            ## mapping information to the igraph object
+            V(h)[rownames(sampTab)]$subpopulation <- sampTab$colors
+            V(h)[rownames(sampTab)]$colors <- sampTab$colors
+            V(h)[names(nodeLabels(sampTab,'population'))]$label <- nodeLabels(sampTab, 'population')
+            V(h)$size <- 5
+            E(h)$arrow.size <- 0.01
+            #colors <- rainbow(max(membership(comms)))
+            
+            print("plotting graph in RStudio")
+            plot(h,vertex.color=V(h)$colors, vertex.frame.color=V(h)$colors, layout=as.matrix(matrix))
+            print('done plotting graph')
+            
+            ## Useful information about the graph
+            graph <- list()
+            graph[['network']] <- h
+            graph[['edges']] <- edges
+            graph[['similarity_matrix']] <- sim
+            graph[['subpopulation']] <- cell.comms
+            #graph[['communities']] <- comms
+            
+            print('updating CellRouter object')
+            object@graph <- graph
+            object@expdata <- object@expdata[,rownames(sampTab)]
+            object@ndata <- object@ndata[,rownames(sampTab)]
+            object@sampTab <- sampTab
+            
+            write.graph(graph = h, file = filename, format = 'gml')
+            
+            rm(h)
+            rm(edges)
+            rm(sim)
+            
+            return(object)
+          }
+)
+
+### Discovering supopulation structure ##
+setGeneric("cellcorrelation", function(object, h, sim.type="jaccard", filename="graph_clusters.gml", ...) standardGeneric("cellcorrelation"))
+setMethod("cellcorrelation",
+          signature = "CellRouter",
+          definition = function(object, h, sim.type, filename, ...){
+            
+            library('cccd')
+            library('proxy') # Library of similarity/dissimilarity measures for 'dist()'
+            matrix <- object@rdimension
+            sampTab <- object@sampTab
+            
+            print('building k-nearest neighbors graph')
+            #dm <- as.matrix(dist(matrix))
+            #h <- nng(dx=dm,k=k)
+            #V(h)$name <- rownames(matrix)
+            if(sim.type == 'jaccard'){
+              sim <- similarity.jaccard(h, vids=V(h), loops=FALSE)
+            }else if(sim.type == 'invlog'){
+              sim <- similarity.invlogweighted(h, vids=V(h))
+            }
+            rownames(sim) <- V(h)$name
+            colnames(sim) <- V(h)$name
+            
+            edges <- as.data.frame(get.edgelist(h))
+            rownames(edges) <- paste(edges$V1, edges$V2, sep='_')
+            edges$weight <- 0
+            for(i in 1:nrow(edges)){
+              if((i %% 10000) == 0) cat(i, '\n')
+              edge <- edges[i,]
+              from <- as.character(edge$V1)
+              to <- as.character(edge$V2)
+              metric <- as.numeric(sim[from, to])
+              index <- paste(from, to, sep='_')
+              edges[index, 'weight'] <- metric
+            }
+            E(h)$weight <- edges$weight
+            
+            ## Community detection to discover subpopulation structure
+            print('discoverying subpopulation structure')
+            #comms <- multilevel.community(as.undirected(h), weights = E(h)$weight)
+            V(h)[rownames(sampTab)]$comms <- as.vector(sampTab$conditions) #cluster->celltype
+            cell.comms <- split(sampTab, sampTab$conditions)
+            cell.comms <- lapply(cell.comms, rownames)
+            #cell.comms <- commToNames(comms, 'SP') #SP means SubPopulations
+            allcells <- as.vector(unlist(cell.comms))
+            
+            
+            ## Making sure that color mappings are correct
+            sampTab <- sampTab[allcells,] #changesorder of cells in the table
+            sampTab$population <- ''
+            sampTab$colors <- ''
+            colorvector <- 1:length(cell.comms)
+            comm.colors <- cRampClust(colorvector, length(colorvector))
+            names(comm.colors) <- names(cell.comms)
+            for(comm in names(cell.comms)){
+              sampTab[cell.comms[[comm]], 'population'] <- comm
+              sampTab[cell.comms[[comm]], 'colors'] <- comm.colors[comm]
+            }
+            sampTab$community <- as.vector(unlist(lapply(strsplit(sampTab$population, split="_"), "[", 2)))
+            
+            ## mapping information to the igraph object
+            V(h)[rownames(sampTab)]$subpopulation <- sampTab$colors
+            V(h)[rownames(sampTab)]$colors <- sampTab$colors
+            V(h)[names(nodeLabels(sampTab,'population'))]$label <- nodeLabels(sampTab, 'population')
+            V(h)$size <- 5
+            E(h)$arrow.size <- 0.01
+            #colors <- rainbow(max(membership(comms)))
+            
+            print("plotting graph in RStudio")
+            plot(h,vertex.color=V(h)$colors, vertex.frame.color=V(h)$colors, layout=as.matrix(matrix))
+            print('done plotting graph')
+            
+            ## Useful information about the graph
+            graph <- list()
+            graph[['network']] <- h
+            graph[['edges']] <- edges
+            graph[['similarity_matrix']] <- sim
+            graph[['subpopulation']] <- cell.comms
+            #graph[['communities']] <- comms
+            
+            print('updating CellRouter object')
+            object@graph <- graph
+            object@expdata <- object@expdata[,rownames(sampTab)]
+            object@ndata <- object@ndata[,rownames(sampTab)]
+            object@sampTab <- sampTab
+            
+            write.graph(graph = h, file = filename, format = 'gml')
+            
+            rm(h)
+            rm(edges)
+            rm(sim)
+            
+            return(object)
+          }
+)
+
+setGeneric("createKNNgraph", function(object, k=5, 
+                                      sim.type="jaccard", 
+                                      identify.clusters=TRUE,
+                                      filename="graph_subpopulations.gml", ...) standardGeneric("createKNNgraph"))
+
+setMethod("createKNNgraph",
+          signature = "CellRouter",
+          definition = function(object, k, sim.type, identify.clusters, filename, ...){
+            if(identify.clusters == TRUE){
+              cellrouter <- findsubpopulations(cellrouter, k, sim.type, filename)
+            }else{
+              cellrouter <- createKNNann(cellrouter, k, sim.type, filename)
+            }
+            
+            cellrouter
+          }
+)
+
+## Create a proportion plot
+plotProportion <- function(object, condition, population, width, height, filename){
+  samples <- object@sampTab
+  data2 <- data.frame(cells=samples[[condition]], classification=samples[[population]])
+  data2$classification <- factor(data2$classification, levels=unique(as.vector(data2$classification)))
+  colors <- as.vector(unique(samples$colors))
+  names(colors) <- unique(as.vector(samples$population))
+  
+  pdf(file=filename, width = width, height=height)
+  g <- ggplot(data2,aes(x = classification, fill = cells)) + 
+    geom_bar(position = "fill", color='black') + 
+    theme_bw() + theme(legend.position='right', 
+                       legend.key.size = unit(0.3, "cm"), 
+                       legend.text=element_text(size=7)) +
+    xlab("") + ylab("Proportion") + 
+    theme(axis.text.x = element_text(size=10, angle=45, hjust=1), axis.title.y = element_text(size = rel(1), angle = 90)) +
+    #scale_fill_manual("", values=colors)
+  scale_fill_brewer("", palette = 'Paired')
+  print(g)
+  dev.off()
+  
+}
 
 ### Discovering supopulation structure ##
 setGeneric("findsubpopulations", function(object, k=5, sim.type="jaccard", filename="graph_subpopulations.gml", ...) standardGeneric("findsubpopulations"))
@@ -416,7 +477,8 @@ setMethod("findsubpopulations",
             sampTab <- sampTab[allcells,] #changesorder of cells in the table
             sampTab$population <- ''
             sampTab$colors <- ''
-            comm.colors <- cRampClust(unique(membership(comms)), length(unique(membership(comms))))
+            comm.colors <- cRampClust(unique(membership(comms)), 9)
+            #comm.colors <- cRampClust(unique(membership(comms)), length(unique(membership(comms))))
             names(comm.colors) <- names(cell.comms)
             for(comm in names(cell.comms)){
               sampTab[cell.comms[[comm]], 'population'] <- comm
@@ -520,7 +582,8 @@ setMethod("createKNN",
             sampTab <- sampTab[allcells,] #change order of cells in the table
             sampTab$population <- ''
             sampTab$colors <- ''
-            comm.colors <- cRampClust(unique(comms$membership), length(unique(comms$membership)))
+            #comm.colors <- cRampClust(unique(comms$membership), length(unique(comms$membership)))
+            comm.colors <- cRampClust(unique(membership(comms)), 9)
             names(comm.colors) <- names(cell.comms)
             for(comm in names(cell.comms)){
               sampTab[cell.comms[[comm]], 'population'] <- comm
@@ -532,7 +595,7 @@ setMethod("createKNN",
             V(h)[names(nodeLabels(sampTab,'community'))]$label <- nodeLabels(sampTab, 'community') #as.vector(sampTab$community)
             #outdegree<-degree(h);
             #V(h)$size<-ig_scaleV(outdegree, sf=10, 4);
-            V(h)$size <- 2
+            V(h)$size <- 5
             E(h)$arrow.size <- 0.01
             colors <- rainbow(max(membership(comms)))
             plot(h,vertex.color=V(h)$colors, vertex.frame.color=V(h)$colors, layout=as.matrix(matrix))
@@ -560,17 +623,110 @@ setMethod("createKNN",
           }
 )
 
+setGeneric("createKNNsubsampling", function(object, k, sim.type, filename) standardGeneric("createKNNsubsampling"))
+setMethod("createKNNsubsampling",
+          signature="CellRouter",
+          definition=function(object, k, sim.type, filename){
+            
+            library(cccd)
+            library('proxy') # Library of similarity/dissimilarity measures for 'dist()'
+            
+            matrix <- object@rdimension
+            sampTab <- object@sampTab
+            
+            matrix <- matrix[sample(rownames(matrix), 2160),] #about 80% of cells
+            sampTab <- sampTab[rownames(matrix), ]
+            
+            print(dim(matrix))
+            
+            dm <- as.matrix(dist(matrix))
+            h <- nng(dx=dm,k=k)
+            V(h)$name <- rownames(matrix)
+            if(sim.type == 'jaccard'){
+              sim <- similarity.jaccard(h, vids=V(h), loops=FALSE)
+            }else if(sim.type == 'invlog'){
+              sim <- similarity.invlogweighted(h, vids=V(h))
+            }
+            rownames(sim) <- V(h)$name
+            colnames(sim) <- V(h)$name
+            
+            edges <- as.data.frame(get.edgelist(h))
+            rownames(edges) <- paste(edges$V1, edges$V2, sep='_')
+            edges$weight <- 0
+            for(i in 1:nrow(edges)){
+              edge <- edges[i,]
+              from <- as.character(edge$V1)
+              to <- as.character(edge$V2)
+              metric <- as.numeric(sim[from, to])
+              index <- paste(from, to, sep='_')
+              edges[index, 'weight'] <- metric
+            }
+            E(h)$weight <- edges$weight
+            V(h)[rownames(sampTab)]$comms <- as.vector(sampTab$community)
+            allcells <- as.vector(rownames(sampTab))
+            #cell.comms <- as.vector(sampTab$population)
+            #names(cell.comms) <- rownames(sampTab)
+            #comms <- communities
+            #V(h)$comms <- membership(comms)
+            #cell.comms <- commToNames(comms, 'SP')
+            #allcells <- as.vector(unlist(cell.comms))
+            
+            sampTab <- sampTab[allcells,] #change order of cells in the table
+            #sampTab$population <- ''
+            #sampTab$colors <- ''
+            #comm.colors <- cRampClust(unique(comms$membership), length(unique(comms$membership)))
+            #comm.colors <- cRampClust(unique(sampTab$community), length(unique(sampTab$community)))
+            #names(comm.colors) <- names(cell.comms)
+            #for(comm in names(cell.comms)){
+            #  sampTab[cell.comms[[comm]], 'population'] <- comm
+            #  sampTab[cell.comms[[comm]], 'colors'] <- comm.colors[comm]
+            #}
+            #sampTab$community <- as.vector(unlist(lapply(strsplit(sampTab$population, split="_"), "[", 2)))
+            V(h)[rownames(sampTab)]$subpopulation <- sampTab$colors
+            V(h)[rownames(sampTab)]$colors <- sampTab$colors
+            V(h)[names(nodeLabels(sampTab,'community'))]$label <- nodeLabels(sampTab, 'community') #as.vector(sampTab$community)
+            #outdegree<-degree(h);
+            #V(h)$size<-ig_scaleV(outdegree, sf=10, 4);
+            V(h)$size <- 2
+            E(h)$arrow.size <- 0.01
+            #colors <- rainbow(max(membership(comms)))
+            #plot(h,vertex.color=V(h)$colors, vertex.frame.color=V(h)$colors, layout=as.matrix(matrix))
+            
+            graph <- list()
+            graph[['network']] <- h
+            graph[['edges']] <- edges
+            graph[['similarity_matrix']] <- sim
+            graph[['subpopulation']] <- split(sampTab, sampTab$population)
+            graph[['communities']] <- split(sampTab, sampTab$community)
+            
+            print('updating CellRouter object')
+            object@graph <- graph
+            object@expdata <- object@expdata[,rownames(sampTab)]
+            object@ndata <- object@ndata[,rownames(sampTab)]
+            object@sampTab <- sampTab
+            
+            write.graph(graph = h, file = filename, format = 'gml')
+            
+            rm(h)
+            rm(edges)
+            rm(sim)
+            
+            return(object)
+          }
+)
+
 
 
 ### finding gene signatures for each subpopulation (genes more highly expression in each subpopulation)
-setGeneric("diffexpr", function(object, foldchange=1, pvalue=0.01) standardGeneric("diffexpr"))
+setGeneric("diffexpr", function(object, foldchange=1, column, pvalue=0.01) standardGeneric("diffexpr"))
 
 setMethod("diffexpr",
           signature = "CellRouter",
-          definition = function(object, foldchange, pvalue){
+          definition = function(object, foldchange, column, pvalue){
             print('discovering subpopulation-specific gene signatures')
             expDat <- object@ndata
-            membs <- as.vector(object@sampTab$population)
+            #membs <- as.vector(object@sampTab$population)
+            membs <- as.vector(object@sampTab[[column]])
             diffs <- list()
             for(i in unique(membs)){
               if(sum(membs == i) == 0) next
@@ -578,7 +734,8 @@ setMethod("diffexpr",
               n <- if(sum(membs == i) > 1) apply(expDat[, membs == i], 1, mean) else expDat[, membs == i]
               
               pv <- binompval(m/sum(m),sum(n),n)
-              d <- data.frame(mean.np=m, mean.p=n, fc=n/m, pv=pv)
+              d <- data.frame(mean.np=m, mean.p=n, fc=n-m, pv=pv) #log scale
+              #d <- data.frame(mean.np=m, mean.p=n, fc=n/m, pv=pv) #linear scale
               d <- d[!is.infinite(d$fc),]
               d <- d[which(d$pv < 0.05),]
               #d <- d[order(d$pv, decreasing=FALSE),]
@@ -616,10 +773,54 @@ setMethod("findmarkers",
             df$fc <- xx
             #df <- df[order(df$population), c('population', 'fc')]
             df <- df[, c('population', 'fc')]
+            df <- df[which(df$fc > 0),] #new line...
             #df <- df[order(nchar(df$population)),]
             return(df)
           }
 )
+
+setGeneric("dotplot2", function(object, sampTab, genes.use, column, thr, logtransform=TRUE,width, height, filename) standardGeneric("dotplot2"))
+setMethod("dotplot2",
+          signature = "CellRouter",
+          definition = function(object, sampTab, genes.use, column, thr, logtransform, width, height, filename){
+            perc <- data.frame(matrix(0, nrow=length(genes.use), ncol=0))
+            exp <- perc
+            rownames(perc) <- genes.use
+            
+            for(i in unique(sampTab[[column]])){
+              cells.population <- rownames(sampTab[which(sampTab[[column]] == i),])
+              p <- apply(object@ndata[genes.use, cells.population], 1, function(x){sum(x>thr)/length(x)})
+              perc <- cbind(perc, p)
+              
+              v <- apply(object@ndata[genes.use, cells.population], 1, mean)
+              exp <- cbind(exp, v)
+            }
+            colnames(perc) <- unique(sampTab[[column]])
+            colnames(exp) <- unique(sampTab[[column]])
+            rownames(exp) <- sapply(strsplit(rownames(exp), split='__', fixed=TRUE), function(x){x[1]})
+            perc$gene <- rownames(perc)
+            perc = melt(perc, id.vars  = 'gene')
+            exp$gene <- rownames(exp)
+            exp <- melt(exp, id.vars='gene')
+            exp$size <- perc$value*100
+            if(logtransform){
+              exp$value <- log(exp$value + 1)
+            }
+            
+            pdf(file=filename, width=width, height=height)
+            g <- ggplot(exp, aes(gene, variable)) + geom_point(aes(colour=value, size=size)) +
+              theme_bw() + xlab("") + ylab("") +
+              #theme(axis.text.x=element_text(size=12, angle=45, hjust=1),
+              theme(axis.text.x=element_text(size=12, angle=45, hjust=1),
+                    panel.grid.minor = element_blank(),
+                    panel.grid.major = element_blank(),
+                    panel.border=element_rect(fill = NA, colour=alpha('black', 1),size=1)) +
+              scale_color_gradient("average",low ="blue", high = "red") + coord_flip()
+            print(g)
+            dev.off()
+          }
+)
+
 
 ######## plot dot plot with marker genes and heatmap: do it later... ###
 setGeneric("dotplot", function(object, sampTab, genes.use, thr, logtransform=TRUE,width, height, filename) standardGeneric("dotplot"))
@@ -644,6 +845,7 @@ setMethod("dotplot",
             perc$gene <- rownames(perc)
             perc = melt(perc, id.vars  = 'gene')
             exp$gene <- rownames(exp)
+            exp$gene <- factor(exp$gene, levels=genes.use)
             exp <- melt(exp, id.vars='gene')
             exp$size <- perc$value*100
             if(logtransform){
@@ -653,12 +855,12 @@ setMethod("dotplot",
             pdf(file=filename, width=width, height=height)
             g <- ggplot(exp, aes(gene, variable)) + geom_point(aes(colour=value, size=size)) +
               theme_bw() + xlab("") + ylab("") +
+              #theme(axis.text.x=element_text(size=12, angle=45, hjust=1),
               theme(axis.text.x=element_text(size=12, angle=45, hjust=1),
                     panel.grid.minor = element_blank(),
                     panel.grid.major = element_blank(),
-                    axis.text.x=element_blank(),axis.ticks=element_blank(),
                     panel.border=element_rect(fill = NA, colour=alpha('black', 1),size=1)) +
-              scale_color_gradient("average",low ="blue", high = "red")
+              scale_color_gradient("average",low ="blue", high = "red") #+ coord_flip()
             print(g)
             dev.off()
           }
@@ -676,18 +878,21 @@ setMethod("markersheatmap",
             myBreaks <- c(seq(min(df), 0, length.out=ceiling(paletteLength/2) + 1), 
                           seq(max(df)/paletteLength, max(df), length.out=floor(paletteLength/2)))
             
-            ann_col <- data.frame(population=as.vector(sampTab[,'population']))
+            #ann_col <- data.frame(population=as.vector(sampTab[,'population']))
+            ann_col <- data.frame(population=as.vector(sampTab[,'community']))
             rownames(ann_col) <- rownames(sampTab)
             
             ann_row <- data.frame(signature=as.vector(markers$population))
             rownames(ann_row) <- rownames(markers)
             
             index <- getIndexes(ann_col, ann_row)
-            tmp <- sampTab[match(as.vector(ann_row$signature), sampTab$population),'colors']
+            tmp <- sampTab[match(as.vector(ann_row$signature), sampTab$community),'colors']
+            #tmp <- sampTab[match(as.vector(ann_row$signature), sampTab$population),'colors']
             
             pdf(file='results/heatmap_test.pdf', width=10, height=7)
             #png(filename, width = width, height = height, units = 'in', res = 1000)
-            hmcols<- colorRampPalette(c("darkblue", "black", "yellow"))
+            #hmcols<- colorRampPalette(c("darkblue", "black", "yellow"))
+            hmcols<- colorRampPalette(c("grey", "white", "red"))
             heatmap.2(as.matrix(df[rownames(markers),]), col=hmcols,trace="none",
                       density.info="none", scale="none",margin=c(10,10), key=TRUE, Colv=F, Rowv=F,
                       srtCol=60, dendrogram="none", cexCol=0.75, cexRow=0.65, labRow=FALSE, 
@@ -969,6 +1174,7 @@ setMethod("processtrajectories",
             
             paths <- lapply(object@directory, function(x){read.csv(paste(x, 'Cells_FlowNetwork_all_paths.txt', sep='/'),
                                                                             sep="\t", stringsAsFactors=FALSE)})
+            paths <- paths[lapply(paths, nrow) > 1]
             #paths <- lapply(paths, function(x){x[order(x$path_flow, decreasing = TRUE),]})
             if(path.rank == "path_cost"){
               paths <- lapply(paths, function(x){x[order(x[,path.rank], decreasing = FALSE),]})
@@ -985,7 +1191,7 @@ setMethod("processtrajectories",
             #remove empty paths
             paths <- paths[complete.cases(paths),]
             #opening flow networks
-            networks <- lapply(cellrouter@directory, 
+            networks <- lapply(object@directory, 
                                function(x){
                                  file <- list.files(x, '*.gml*');
                                  if(length(file) > 0){
@@ -1094,7 +1300,7 @@ setMethod('plotgraph',
           signature="CellRouter",
           definition=function(object, ggrn, scores, vLabels, filname){
             
-            rgrn <- induced.subgraph(ggrn, vids=unlist(neighborhood(graph=ggrn,order=1,nodes=names(scores))))
+            rgrn <- igraph::induced.subgraph(ggrn, vids=unlist(igraph::neighborhood(graph=ggrn,order=1,nodes=names(scores))))
             subnet <- ig_convertSmall(rgrn, exponent = 0.5)
             subnet <- ig_NiceGraph(object, subnet, transition, vLabels = vLavels)
             write.graph(subnet, file='results/SP_4.SP_5_network.gml', format='gml')
@@ -1129,20 +1335,28 @@ setMethod('plotclusters',
               g1 <- ggplot(matrix.m, aes(variable, gene)) + geom_tile(aes(fill = value)) +
                 scale_fill_gradientn("zscore",colours=c("midnightblue","dodgerblue3","white","goldenrod1","darkorange2")) + theme_bw() +
                 #xlab("CellRouter trajectory") + ylab("") +
-                xlab("") + ylab("") +
+                xlab("") + ylab(paste(length(g), ' genes')) +
                 #scale_fill_gradient2("zscore", low="navy", high="red") + theme_bw() + xlab("CellRouter trajectory") + ylab("") +
-                theme(legend.position="right", #axis.text.x = element_text(size=rel(1), angle=45, hjust=1),
-                      axis.title.y = element_text(size = rel(0.3), angle = 90), panel.grid.major = element_blank(),
+                theme(legend.position="none", #axis.text.x = element_text(size=rel(1), angle=45, hjust=1),
+                      axis.title.y = element_text(size = rel(2), angle = 90), panel.grid.major = element_blank(),
                       panel.grid.minor = element_blank(),
                       axis.text.x=element_blank(), axis.text.y=element_blank(), axis.ticks=element_blank(),
-                      panel.border=element_rect(fill = NA, colour=alpha('black', 1),size=1)) +
-                ggtitle(cl)
+                      panel.border=element_rect(fill = NA, colour=alpha('black', 1),size=1)) #+
+                #ggtitle(cl)
+              
+              file <- paste(filename, '_', cl, '.png', sep='')
+              png(file=file, width=200, height=150)# units = 'in', res = 1000)
+              #pdf(file=file, width=3, height=2)
+              plot(g1)
+              #multiplot(plotlist = plots, cols=columns)
+              dev.off()
               
               plots[[cl]] <- g1
             }
             
-            #pdf(file=filename, width=width, height=height)
-            png(file=filename, width=width, height=height)
+            file <- paste(filename, 'combined_', '.png',sep='')
+            #pdf(file=file, width=width, height=height)
+            png(file=file, width=width, height=height)
             multiplot(plotlist = plots, cols=columns)
             dev.off()
           }
@@ -1199,8 +1413,11 @@ setMethod('plotbranch',
             
             plots[[p2]] <- g2
             pdf(file=filename, width=width, height=height)
+            #png(file=filename, width = width, height = height, units = 'in', res = 1000)
             multiplot(plotlist = plots, cols=columns)
             dev.off()
+            
+            multiplot(plotlist = plots, cols=columns)
           }
 )
 
@@ -1226,9 +1443,9 @@ setMethod('plottr',
              myColor <- colorRampPalette(c("navy","white","red"))(paletteLength)
              myBreaks <- c(seq(min(matrix), 0, length.out=ceiling(paletteLength/2) + 1), 
                            seq(max(matrix)/paletteLength, max(matrix), length.out=floor(paletteLength/2)))
-             pheatmap(matrix, color = myColor, breaks = myBreaks, 
-                      cluster_cols = FALSE, clustering_method = 'ward.D', main=p,
-                      show_colnames = FALSE)
+             #pheatmap(matrix, color = myColor, breaks = myBreaks, 
+            #          cluster_cols = FALSE, clustering_method = 'ward.D', main=p,
+            #          show_colnames = FALSE)
             
             matrix$cluster <- rownames(matrix)
             matrix.m <- melt(matrix, id.var="cluster")
@@ -1237,7 +1454,7 @@ setMethod('plottr',
               #scale_fill_gradientn("Derivative",colours=colors) + theme_bw() + xlab("CellRouter trajectory") + ylab("") +
               scale_fill_gradient2("Derivative", low="navy", high="red") + theme_bw() + xlab("CellRouter trajectory") + ylab("") +
               #scale_fill_gradient("", low="navy", high) + theme_bw() + xlab("CellRouter trajectory") + ylab("") +
-              theme(legend.position="right", #axis.text.x = element_text(size=rel(1), angle=45, hjust=1),
+              theme(legend.position="bottom", #axis.text.x = element_text(size=rel(1), angle=45, hjust=1),
                     axis.title.y = element_text(size = rel(0.3), angle = 90), panel.grid.major = element_blank(),
                     panel.grid.minor = element_blank(),
                     axis.text.x=element_blank(),axis.ticks=element_blank(),
@@ -1254,7 +1471,7 @@ setMethod('plottr',
             g1 <- ggplot(matrix.m, aes(variable, cluster)) + geom_tile(aes(fill = value)) +
               scale_fill_gradientn("Expression",colours=colors) + theme_bw() + xlab("CellRouter trajectory") + ylab("") +
               #scale_fill_gradient("", low="navy", high) + theme_bw() + xlab("CellRouter trajectory") + ylab("") +
-              theme(legend.position="right", #axis.text.x = element_text(size=rel(1), angle=45, hjust=1),
+              theme(legend.position="bottom", #axis.text.x = element_text(size=rel(1), angle=45, hjust=1),
                     axis.title.y = element_text(size = rel(0.3), angle = 90), panel.grid.major = element_blank(),
                     panel.grid.minor = element_blank(),
                     axis.text.x=element_blank(),axis.ticks=element_blank(),
@@ -1267,6 +1484,8 @@ setMethod('plottr',
             #png(file=filename, width = width, height = height, units = 'in', res = 1000)
             multiplot(plotlist = plots, cols=columns)
             dev.off()
+           
+            multiplot(plotlist = plots, cols=columns)
             
             matrix2
             # matrix <- object@dynamics[[p]][names(scores),]
@@ -1318,7 +1537,7 @@ setMethod('grntransition',
               proportions <- vector()
               for(r in names(tfs.transition)){
                 #all genes connected to r
-                rgrn <- induced.subgraph(ggrn, vids=unlist(neighborhood(graph=ggrn,order=1,nodes=r)))
+                rgrn <- igraph::induced.subgraph(ggrn, vids=unlist(igraph::neighborhood(graph=ggrn,order=1,nodes=r)))
                 #x <- object@top.correlations[[dir.targets]][[p]]
                 x <- transition.genes[[dir.targets]][[p]]
                 #all genes connected to r and regulated along trajectory p
@@ -1385,6 +1604,55 @@ setMethod('grntransition',
           }
 )
 
+networkmodules <- function(x, ggrn, width, height,filename){
+  nets <- list()
+  for(n in names(x)){
+    xx <- x[[n]]$scores
+    rgrn <- igraph::induced.subgraph(ggrn, 
+            vids=unlist(igraph::neighborhood(graph=ggrn,order=1,nodes=names(xx))))
+    nets[[n]] <- rgrn  
+  }
+  y <- lapply(nets, function(x){V(x)$name})
+  #y <- list(V(nets$SP_2.SP_8)$name,V(nets$SP_2.SP_4)$name, V(nets$SP_2.SP_11)$name)
+  yy <- Reduce(intersect, y)
+  
+  l <- list()
+  for(sub in names(nets)){
+    g <- fortify(nets[[sub]])
+    g$network <- sub
+    l[[sub]] <- g
+  }
+  l <- do.call(rbind, l)
+  ##highlight genes on the overlap...
+  #bla <- split(l, l$network)
+  #bla <- lapply(bla, function(x){x$label})
+  #int <- Reduce(intersect, bla)
+  l$network[as.vector(l$label) %in% yy] <- 'Shared'
+  
+  #l$label[which(l$type == 'Target')] <- ""
+  regs <- unique(as.vector(unlist(lapply(x, function(y){names(y$scores)}))))
+  l$label2 <- as.vector(l$label)
+  l$label2[-which(as.vector(l$label) %in% regs)] <- ""
+  pdf(file=filename, width=width, height=height)
+  set.seed(1)
+  g <- ggplot(data = l, aes(from_id = from, to_id = to, group=factor(network))) +
+    #geom_net(aes(colour = props, size=size, label=label), layout.alg = "kamadakawai",
+    geom_net(aes(colour = network, label=label2), layout.alg = "kamadakawai", 
+             labelon = TRUE, vjust = -0.6, ecolour = "grey60",
+             directed =FALSE, fontsize = 2.5, ealpha = 0.2, labelcolour = 'black',
+             fiteach=T, arrowsize = 1) +
+    #xlim(c(-0.25, 1.25)) + ylim(-0.25, 1.25) +
+    theme_net() + theme(legend.position = "bottom") +
+    #scale_colour_manual(values = c('lightgreen', 'red','orange')) +
+    scale_colour_brewer("", palette = 'Paired') +
+    #facet_wrap(~network, nrow = 3, labeller = "label_both") +
+    theme(panel.border = element_rect(fill = NA, colour = "black"),
+          strip.background = element_rect(colour="black"))
+  #scale_colour_brewer("", palette = 'Set2')
+  print(g)
+  dev.off()
+}
+
 setGeneric('grnscores', function(object, tfs, transitions, direction, dir.targets='up',
                                  q.up=0.95, q.down=0.05,
                                  columns=1, width, height, flip, filename,...) standardGeneric('grnscores'))
@@ -1414,14 +1682,14 @@ setMethod('grnscores',
               names <- vector()
               tf.targets <- list()
               for(r in names(tfs.transition)){
-                rgrn <- induced.subgraph(ggrn, vids=unlist(neighborhood(graph=ggrn,order=1,nodes=r)))
+                rgrn <- igraph::induced.subgraph(ggrn, vids=unlist(igraph::neighborhood(graph=ggrn,order=1,nodes=r)))
                 x <- object@top.correlations[[dir.targets]][[p]]
                 genes <- intersect(V(rgrn)$name, names(x)) #subnetwork active during transition p
                 bla <- cellrouter@correlation[[p]][genes]
                 if(length(bla) == 0){
-                  cat(r, 'has no targets\n')
+                  #cat(r, 'has no targets\n')
                 }else if(length(bla) == 1 & names(bla) == r){
-                  cat(r, 'regulates only itself\n')
+                  #cat(r, 'regulates only itself\n')
                 }else if(length(bla) > 0){ #at least one target required
                   tf.targets[[r]] <- names(bla)
                   averages <- append(averages, mean(bla))
@@ -1440,6 +1708,7 @@ setMethod('grnscores',
               num.genes <- num.genes[names(averages)]
               #rescale num.genes
               num.genes <- rescale(num.genes, newrange = c(0.01,1)) #when it rescaled, it changes the scores when only up or down-regulated genes are included...
+              averages <- abs(averages)
               scores <- tfs.transition[names(averages)] * averages * num.genes #* number of genes regulated
               #scores <- scores[order(scores, decreasing=TRUE)]
               #scores <- scores[1:num.genes]
@@ -1463,10 +1732,11 @@ setMethod('grnscores',
                 colors <- c('blue', 'white', 'red')
               }
               scores <- scores[order(scores, decreasing=TRUE)]
-              allscores[[p]] <- list(scores=scores, targets=tf.targets)
+              targets <- tf.targets[names(scores)]
+              allscores[[p]] <- list(scores=scores, targets=targets)
               df <- data.frame(gene=names(scores), score=as.numeric(scores))
               df <- df[order(df$score, decreasing = TRUE),]
-              angle=00
+              angle=30
               if(flip){
                 df$gene <- factor(df$gene, levels=rev(df$gene))
               }else{
@@ -1502,226 +1772,13 @@ setMethod('grnscores',
             pdf(file = file, width=width, height=height)
             multiplot(plotlist = plots,cols=columns)
             dev.off()
+           
+            multiplot(plotlist = plots,cols=columns)
+            
             allscores
             #list(scores=scores, targets=tf.targets)
           }
 )
-
-
-
-# setGeneric('grnscores', function(object, tfs, transitions, direction, dir.targets='up',
-#                                  q.up=0.95, q.down=0.05,
-#                                  columns=1, width, height, flip, filename,...) standardGeneric('grnscores'))
-# setMethod('grnscores',
-#           signature="CellRouter",
-#           definition=function(object, tfs, transitions, direction,
-#                               dir.targets, q.up, q.down,
-#                               columns, width, height, flip, filename){
-#             plots <- list()
-#             #ps <- list()
-#             allscores <- list()
-#             for(p in transitions){
-#               if(direction=='up'){
-#                 tfs.transition <- intersect(tfs,names(object@top.correlations[['up']][[p]])) #intersect(tfs,names(cellrouter@top.correlations$up$SP_3.SP_8))
-#               }else if(direction == 'down'){
-#                 tfs.transition <- intersect(tfs,names(object@top.correlations[['down']][[p]])) #intersect(tfs,names(cellrouter@top.correlations$up$SP_3.SP_8))
-#               }else{
-#                 tfs.transition.up <- intersect(tfs,names(object@top.correlations[['up']][[p]])) #intersect(tfs,names(cellrouter@top.correlations$up$SP_3.SP_8))
-#                 tfs.transition.down <- intersect(tfs,names(object@top.correlations[['down']][[p]])) #intersect(tfs,names(cellrouter@top.correlations$up$SP_3.SP_8))
-#                 tfs.transition <- c(tfs.transition.up, tfs.transition.down)
-#               }
-#               
-#               tfs.transition <- intersect(V(ggrn)$name, tfs.transition)
-#               tfs.transition <- object@correlation[[p]][tfs.transition]
-#               averages <- vector()
-#               num.genes <- vector()
-#               names <- vector()
-#               tf.targets <- list()
-#               for(r in names(tfs.transition)){
-#                 rgrn <- induced.subgraph(ggrn, vids=unlist(neighborhood(graph=ggrn,order=1,nodes=r)))
-#                 x <- object@top.correlations[[dir.targets]][[p]]
-#                 genes <- intersect(V(rgrn)$name, names(x)) #subnetwork active during transition p
-#                 bla <- cellrouter@correlation[[p]][genes]
-#                 if(length(bla) == 0){
-#                   cat(r, 'has no targets\n')
-#                 }else if(length(bla) == 1 & names(bla) == r){
-#                   cat(r, 'regulates only itself\n')
-#                 }else if(length(bla) > 0){ #at least one target required
-#                   tf.targets[[r]] <- names(bla)
-#                   averages <- append(averages, mean(bla))
-#                   num.genes <- append(num.genes, length(bla))
-#                   names <- append(names, r)
-#                 }
-#                 #df <- data.frame(gene=as.vector(names(bla)), corr=as.numeric(bla), TF=rep(r, length(bla)), stringsAsFactors = FALSE)
-#                 #ps[[r]] <- df
-#               }
-#               names(averages) <- names
-#               names(num.genes) <- names
-#               aux <- averages[is.na(averages)]
-#               print(length(aux))
-#               averages <- averages[!is.na(averages)]
-#               averages <- averages[order(averages, decreasing=TRUE)]
-#               num.genes <- num.genes[names(averages)]
-#               #rescale num.genes
-#               num.genes <- rescale(num.genes, newrange = c(0.01,1))
-#               scores <- tfs.transition[names(averages)] * averages * num.genes #* number of genes regulated
-#               #scores <- scores[order(scores, decreasing=TRUE)]
-#               #scores <- scores[1:num.genes]
-#               ## if up or down, q.up or q.down are the top genes
-#               ##if both, q.up or q.down are quantiles
-#               if(direction=='up'){
-#                 scores <- scores[order(scores, decreasing=TRUE)]
-#                 scores <- scores[1:q.up]
-#                 colors <- c('white', 'orange', 'red')
-#               }else if(direction=='down'){
-#                 scores <- scores[order(scores, decreasing=FALSE)]
-#                 scores <- scores[1:q.down]
-#                 colors <- c('white','lightblue','blue')
-#               }else{
-#                 #scores <- scores[which(scores > quantile(scores, q.up) | scores < quantile(scores, q.down))]
-#                 x <- scores[order(scores, decreasing=TRUE)]
-#                 x <- x[1:q.up]
-#                 xx <- scores[order(scores, decreasing=FALSE)]
-#                 xx <- xx[1:q.down]
-#                 scores <- c(x, xx)
-#                 colors <- c('blue', 'white', 'red')
-#               }
-#               #scores <- scores[order(scores, decreasing=TRUE)]
-#               allscores[[p]] <- list(scores=scores, targets=tf.targets)
-#               df <- data.frame(gene=names(scores), score=as.numeric(scores))
-#               df <- df[order(df$score, decreasing = TRUE),]
-#               angle=00
-#               if(flip){
-#                 df$gene <- factor(df$gene, levels=rev(df$gene))
-#               }else{
-#                 df$gene <- factor(df$gene, levels=df$gene)
-#                 angle=45
-#               }
-#               
-#               #pdf(file=filename, width=width, height=height)
-#               g <- ggplot(df, aes(x=gene, y=score, fill=score)) + #geom_violin(scale="width") + stat_summary(fun.y=mean,geom='point') + #geom_boxplot(alpha=.9) +
-#                 geom_bar(stat = 'identity', color='black') + #geom_boxplot(alpha=.9) +
-#                 scale_fill_gradientn("",colours=colors) +
-#                 #ggplot(means, aes(x=p, y=mean, fill=p)) + geom_bar(stat='identity') +
-#                 theme_bw() + xlab("") + ylab("GRN score") + theme(legend.position="none") +
-#                 theme(axis.text.x = element_text(size=rel(1), angle=angle, hjust=1)) +
-#                 ggtitle(paste(p)) +
-#                 theme(panel.background=element_blank(),
-#                       panel.grid.major=element_blank(),
-#                       panel.grid.minor=element_blank(),
-#                       plot.background=element_blank(),
-#                       panel.border = element_blank(),
-#                       axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "black"),
-#                       axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "black")) #+
-#                 #coord_flip()
-#               if(flip){
-#                 g <- g + coord_flip()
-#               }
-#               plots[[p]] <- g
-#               #panel.border=element_rect(fill = NA, colour=alpha('black', 1),size=1))
-#               #print(g)
-#               #dev.off()
-#             }
-#             file <- paste(filename, '_target_direction_', dir.targets, '.pdf', sep='')
-#             pdf(file = file, width=width, height=height)
-#             multiplot(plotlist = plots,cols=columns)
-#             dev.off()
-#             allscores
-#             #list(scores=scores, targets=tf.targets)
-#           }
-# )
-
-
-#regulator up, targets up -> inducing expression during differentiation
-#regulator down, targets up -> de-repression during differentiation
-#regulator up, targets down -> repression during differentiation
-#regulator down, targets down -> not inducing expression during differentiation
-# setGeneric('grnscores', function(object, tfs, transitions, dir.targets='up',
-#                                  q.up=0.95, q.down=0.05, 
-#                                  columns=1, width, height, filename,...) standardGeneric('grnscores'))
-# setMethod('grnscores',
-#           signature="CellRouter",
-#           definition=function(object, tfs, transitions, 
-#                               dir.targets, q.up, q.down,
-#                               columns, width, height, filename){
-#             plots <- list()
-#             #ps <- list()
-#             allscores <- list()
-#             for(p in transitions){
-#               tfs.transition <- intersect(tfs,names(object@correlation[[p]])) #intersect(tfs,names(cellrouter@top.correlations$up$SP_3.SP_8))
-#               tfs.transition <- intersect(V(ggrn)$name, tfs.transition)
-#               tfs.transition <- object@correlation[[p]][tfs.transition]
-#               averages <- vector()
-#               names <- vector()
-#               tf.targets <- list()
-#               for(r in names(tfs.transition)){
-#                 rgrn <- induced.subgraph(ggrn, vids=unlist(neighborhood(graph=ggrn,order=1,nodes=r)))
-#                 x <- object@correlation[[p]]
-#                 if(dir.targets == 'up'){
-#                   x <- x[x > 0]
-#                 }else{
-#                   x <- x[x < 0]
-#                 }
-#                 genes <- intersect(V(rgrn)$name, names(x))
-#                 bla <- cellrouter@correlation[[p]][genes]
-#                 if(length(bla) == 0){
-#                   cat(r, 'has no targets')
-#                 }else if(length(bla) == 1 & names(bla) == r){
-#                   cat(r, 'has only regulates only itself\n')
-#                 }else if(length(bla) > 0){
-#                   tf.targets[[r]] <- names(bla)
-#                   averages <- append(averages, mean(bla))
-#                   names <- append(names, r)
-#                   
-#                 }
-#                 #df <- data.frame(gene=as.vector(names(bla)), corr=as.numeric(bla), TF=rep(r, length(bla)), stringsAsFactors = FALSE)
-#                 #ps[[r]] <- df
-#               }
-#               names(averages) <- names
-#               aux <- averages[is.na(averages)]
-#               print(length(aux))
-#               averages <- averages[!is.na(averages)]
-#               averages <- averages[order(averages, decreasing=TRUE)]
-#               scores <- tfs.transition[names(averages)] * averages
-#               #scores <- scores[order(scores, decreasing=TRUE)]
-#               #scores <- scores[1:num.genes]
-#               scores <- scores[which(scores > quantile(scores, q.up) | scores < quantile(scores, q.down))]
-#               scores <- scores[order(scores, decreasing=TRUE)]
-#               allscores[[p]] <- list(scores=scores, targets=tf.targets)
-#               df <- data.frame(gene=names(scores), score=as.numeric(scores))
-#               df <- df[order(df$score, decreasing = TRUE),]
-#               df$gene <- factor(df$gene, levels=rev(df$gene))
-#               colors <- c('blue', 'white', 'red')
-#               #pdf(file=filename, width=width, height=height)
-#               g <- ggplot(df, aes(x=gene, y=score, fill=score)) + #geom_violin(scale="width") + stat_summary(fun.y=mean,geom='point') + #geom_boxplot(alpha=.9) + 
-#                 geom_bar(stat = 'identity', color='black') + #geom_boxplot(alpha=.9) +
-#                 scale_fill_gradientn("",colours=colors) +
-#                 #ggplot(means, aes(x=p, y=mean, fill=p)) + geom_bar(stat='identity') + 
-#                 theme_bw() + xlab("") + ylab("GRN score") + theme(legend.position="none") +
-#                 theme(axis.text.x = element_text(size=rel(1), angle=00, hjust=1)) + 
-#                 ggtitle(paste(p)) +
-#                 theme(panel.background=element_blank(),
-#                       panel.grid.major=element_blank(),
-#                       panel.grid.minor=element_blank(),
-#                       plot.background=element_blank(),
-#                       panel.border = element_blank(),
-#                       axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "black"),
-#                       axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "black")) +
-#                 coord_flip()
-#               plots[[p]] <- g
-#               #panel.border=element_rect(fill = NA, colour=alpha('black', 1),size=1))
-#               #print(g)
-#               #dev.off()
-#             }
-#             file <- paste(filename, '_target_direction_', dir.targets, '.pdf', sep='')
-#             pdf(file = file, width=width, height=height)
-#             multiplot(plotlist = plots,cols=columns)
-#             dev.off()
-#             allscores
-#             #list(scores=scores, targets=tf.targets)
-#           }
-# )
-
 
 
 setGeneric('grnscore', function(object, tfs, p, num.genes, width, height, filename) standardGeneric('grnscore'))
@@ -1740,7 +1797,7 @@ setMethod('grnscore',
             names <- vector()
             tf.targets <- list()
             for(r in names(tfs.transition)){
-              rgrn <- induced.subgraph(ggrn, vids=unlist(neighborhood(graph=ggrn,order=1,nodes=r)))
+              rgrn <- igraph::induced.subgraph(ggrn, vids=unlist(igraph::neighborhood(graph=ggrn,order=1,nodes=r)))
               genes <- intersect(V(rgrn)$name, names(cellrouter@top.correlations$up[[p]]))
               bla <- cellrouter@top.correlations$up[[p]][genes]
               #bla <- bla[bla > 0]
@@ -1793,7 +1850,7 @@ setMethod('grndynamics',
             averages <- vector()
             names <- vector()
             for(r in names(tfs.transition)){
-              rgrn <- induced.subgraph(ggrn, vids=unlist(neighborhood(graph=ggrn,order=1,nodes=r)))
+              rgrn <- igraph::induced.subgraph(ggrn, vids=unlist(igraph::neighborhood(graph=ggrn,order=1,nodes=r)))
               genes <- intersect(V(rgrn)$name, names(cellrouter@correlation[[p]]))
               bla <- cellrouter@correlation[[p]][genes]
               bla <- bla[bla > 0]
@@ -1833,37 +1890,6 @@ setMethod('grndynamics',
 )
 
 
-#I will do a simpler and stringent co-expression based GRN approach...
-# setGeneric('grndynamics', function(object, tfs, p, cor, num.genes) standardGeneric('grndynamics'))
-#   setMethod('grndynamics',
-#             signature="CellRouter",
-#             definition=function(object, tfs, p, cor, num.genes){
-#               paths <- cellrouter@pathsinfo$path[p]
-#               sampTab <- cellrouter@sampTab
-#               sgrn <- list()
-#                 subpopulations <- unique(sampTab[paths[[p]], 'population'])
-#                 #genes <- names(cellroute@top.correlations$up[[p]])
-#                 for(s in subpopulations){
-#                   sc <- rownames(sampTab[sampTab$population == s,])
-#                   sce <- cellrouter@ndata[,sc]
-#                   sce <- sce[which(apply(sce, 1, var) > 0),]
-#                   #tfs2 <- intersect(tfs, rownames(sce))
-#                   print(dim(sce))
-#                   net <- cor(t(sce))
-#                   net2 <- apply(net, 1, function(x){x[abs(x) > cor]})
-#                   net3 <- net2[lapply(net2, length) > num.genes]
-#                   tr <- unique(c(names(net3), as.vector(unlist(lapply(net3, names)))))
-#                   grn <- net[tr, tr]
-#                   grn <- igraph::graph.adjacency(grn, mode='undirected', weighted = TRUE)
-#                   grn <- igraph::simplify(grn, remove.loops = TRUE)
-#                   V(grn)$type <- 'Target'
-#                   V(grn)[intersect(V(grn)$name, tfs)]$type <- 'Regulator'
-#                   grn <- ig_convertSmall(grn, exponent = 0.5)
-#                   sgrn[[s]] <- grn
-#                 }
-#                 sgrn
-#             }
-# )
 
 
 setGeneric("pathsinfo", function(object, num.cells, neighs) standardGeneric("pathsinfo"))
@@ -1872,7 +1898,8 @@ setMethod("pathsinfo",
           definition=function(object, num.cells, neighs){
             
             paths <- object@paths
-            expDat <- object@ndata[object@genes.trajectory,]
+            keep <- intersect(rownames(object@ndata), object@genes.trajectory)
+            expDat <- object@ndata[keep,]
             sampTab <- object@sampTab
             print(neighs)
             
@@ -1895,7 +1922,7 @@ setMethod("pathsinfo",
               cells <- split_paths[c(-1,-length(split_paths))]
               mean <- list()
               for(cell in cells){
-                neighs <- induced.subgraph(graph=g,vids=unlist(neighborhood(graph=g,order=o,nodes=cell)))
+                neighs <- igraph::induced.subgraph(graph=g,vids=unlist(igraph::neighborhood(graph=g,order=o,nodes=cell)))
                 neigh.names <- V(neighs)$name
                 mean[[cell]] <- apply(expDat[,neigh.names], 1, mean)
                 #mean <- append(mean, apply(expDat[,neigh.names], 1, mean))
@@ -1915,16 +1942,6 @@ setMethod("pathsinfo",
               if(length(cells) > num.cells){ #only include paths with more than num.cells cells
                 #expression <- expDat[, cells]
                 expression <- means[[transition]]
-                #bla <- object@sampTab[cells,'population']
-                #names(bla) <- cells
-                #bb <- means[rownames(expression), bla]
-                ####colnames(bb) <- colnames(expression)
-                #expression <- (expression + bb)/2
-                ####expression <- bb
-                ##remove genes with zero variance along a path
-                var <- apply(expression, 1, var)
-                expression <- expression[which(var != 0),]
-                
                 #path_name <- paste("path_", i, sep="")
                 path_name <- paths$population[i]
                 print(path_name)
@@ -1998,7 +2015,7 @@ setMethod("smoothdynamics",
             dynamics <- list()
             #ndata <- object@ndata
             expDat <- object@pathsinfo$distr
-            geneList <- object@genes.trajectory
+            #geneList <- object@genes.trajectory
             for(path in names(object@pathsinfo$distr[names])){
               print(path)
               x_axis <- as.numeric(object@pathsinfo$pseudotime[[path]])
@@ -2040,7 +2057,7 @@ setMethod("clusterGenesPseudotime",
             for(trajectory in names(trajectories)){
               cat(trajectory, '\n')
               matrix <- trajectories[[trajectory]]
-              x <- clustergenes(matrix, num.clusters)
+              x <- suppressWarnings(clustergenes(matrix, num.clusters))
               clusters[[trajectory]] <- x
             }
             object@clusters <- clusters
@@ -2174,10 +2191,10 @@ setMethod("correlationpseudotime",
                   df <- lm(y ~ x, data=df)
                   correlations[[path]][[gene]] <- df$coefficients[2]
                 }else if(type == 'pearson'){
-                  cors <- cor.test(x, y, method="pearson")
+                  cors <- suppressWarnings(cor.test(x, y, method="pearson"))
                   correlations[[path]][[gene]] <- as.numeric(cors$estimate)
                 }else{
-                  cors <- cor.test(x, y, method="spearman")
+                  cors <- suppressWarnings(cor.test(x, y, method="spearman"))
                   correlations[[path]][[gene]] <- as.numeric(cors$estimate)
                 }
                 
@@ -2215,6 +2232,40 @@ setMethod("topgenes2",
           }
 )
 
+setGeneric("autocorrelation", function(object, num.genes) standardGeneric("autocorrelation"))
+setMethod("autocorrelation",
+          signature="CellRouter",
+          definition=function(object){
+            correlation <- object@top.correlations
+            
+            autocor <- list()
+            #for(direction in names(correlation)){
+            direction='up'
+              for(transition in names(correlation[[direction]])){
+                pseudotime <- object@pathsinfo$path[[transition]]
+                genelist <- names(correlation[[direction]][[transition]])
+                
+                names <- vector()
+                rs <- vector()
+                for(g in genelist){
+                  x <- as.numeric(object@ndata[g, pseudotime])
+                  x<- ts(x)
+                  #plot(x)
+                  l <- length(x)
+                  i=1
+                  lagged<- x[(1+i): l]
+                  laggedToo = x[1:(l-i)]
+                  #r <- round(cor(lagged, laggedToo, method='spearman'),3)
+                  r <- round(cor(lagged, laggedToo),3)
+                  rs <- append(rs, r)
+                  names <- append(names, g)
+                }
+                names(rs) <- names
+                autocor[[direction]][[transition]] <- rs
+              }
+            #}
+            autocor
+})
 
 ### Find top genes more highly correlated with pseudotime
 setGeneric("topgenes", function(object, max.quantile, min.quantile) standardGeneric("topgenes"))
@@ -2379,6 +2430,55 @@ setMethod("plotClusterHeatmap",
           }
 )
 
+setGeneric("plotPathHeatmap2", function(object, paths, genelist, logTransform=TRUE, threshold=2, width, height, dir) standardGeneric("plotPathHeatmap2"))
+setMethod("plotPathHeatmap2", 
+          signature="CellRouter",
+          definition=function(object, paths, genelist, logTransform, threshold, width, height, dir){
+            
+            #plotPathHeatmap <- function(corsPaths, pathsInfo, graph, num_genes, width, height, dir){
+            corsPaths <- object@correlation
+            pathsInfo <- object@pathsinfo
+            sampTab <- object@sampTab
+            
+            for(path in paths){
+              genelist2 <- intersect(genelist, rownames(pathsInfo$distr[[path]]))
+              tmpexpr <- pathsInfo$distr[[path]][genelist2,]
+              if(logTransform){
+                tmpexpr <- log(tmpexpr + 1)
+              }
+              andf <- data.frame(sampTab[pathsInfo$path[[path]], 'community',])
+              rownames(andf) <- pathsInfo$path[[path]]
+              colnames(andf) <- c('subpopulation')
+              
+              target_colors <- unique(sampTab[pathsInfo$path[[path]], 'colors',])
+              names(target_colors) <- unique(andf$subpopulation)
+              ann_colors = list(
+                subpopulation = target_colors
+              )
+              from <- sapply(strsplit(path, split='.', fixed=TRUE), function(x){x[1]})
+              to <- sapply(strsplit(path, split='.', fixed=TRUE), function(x){x[2]})
+              title <- paste('Transition ', from, ' ', to, sep='')
+              file <- paste(dir, 'heatmap_top_', path, '.pdf', sep='')
+              labels <- sapply(strsplit(rownames(tmpexpr), split='__', fixed=TRUE), function(x){x[1]})
+              #pheatmap(center_with_threshold(tmpexpr, threshold), cluster_rows = FALSE,
+              #pheatmap(tmpexpr, cluster_rows = TRUE,
+              pheatmap(tmpexpr, cluster_rows = FALSE, 
+                       cluster_cols = FALSE, 
+                       annotation_col = andf, annotation_colors=ann_colors, 
+                       show_colnames = FALSE, border=FALSE, main=title, filename = file, 
+                       width = width, height=height, labels_row = labels)
+              
+              #to show plot in the report
+              pheatmap(tmpexpr, cluster_rows = FALSE, 
+                       cluster_cols = FALSE, 
+                       annotation_col = andf, annotation_colors=ann_colors, 
+                       show_colnames = FALSE, border=FALSE, main=title, labels_row = labels)
+              
+            }
+          }
+)
+
+
 #plot a heatmap of top genes ordered by pseudotime, data is centered and thresholded
 #for visualization
 setGeneric("plotPathHeatmap", function(object, num.genes, logTransform=TRUE, threshold=2, width, height, dir) standardGeneric("plotPathHeatmap"))
@@ -2467,19 +2567,80 @@ setMethod("plottrajectory",
           }
 )
 
+# setGeneric("plottrajectories", function(object, trajectories, geneList, rescale, columns=5, width=23, height=15, filename, ...) standardGeneric("plottrajectories"))
+# setMethod("plottrajectories",
+#           signature="CellRouter",
+#           definition=function(object, trajectories, geneList, rescale, columns, width, height, filename){
+#             
+#             library(smoother)
+#             
+#             plotlist <- list()
+#             for(t in trajectories){
+#               plots <- list()
+#               trajectory <- object@pathsinfo$path[[t]]
+#               x_axis <- 1:length(trajectory) #trajectory
+#               for(gene_id in geneList){
+#                 #y_axis <- as.numeric(object@ndata[gene_id, trajectory])
+#                 y_axis <- as.numeric(object@pathsinfo$distr[[t]][gene_id, ])
+#                 lo <- loess(y_axis~x_axis)
+#                 xl <- seq(min(x_axis),max(x_axis), (max(x_axis) - min(x_axis))/1000)
+#                 y_axis <- predict(lo,xl)
+#                 if(rescale){
+#                   y_axis <- rescale(y_axis, newrange = c(0,1))
+#                 }
+#                 
+#                 df <- data.frame(cells=1:length(y_axis), Expression=as.numeric(y_axis))
+#                 df$gene <- gene_id
+#                 df$cells <- factor(df$cells, levels=df$cells)
+#                 num_subpops <- length(unique(df$population))
+#                 plots[[gene_id]] <- df
+#               }
+#               tables <- do.call(rbind, plots)
+#               labels <- x <- sapply(strsplit(as.vector(tables$gene), split='__', fixed=TRUE), function(x){x[1]})
+#               tables$gene <- labels
+#               if(!rescale){
+#                 tables$Expression <- rescale(tables$Expression, newrange = c(0,1))
+#               }
+#               g1 <- ggplot(tables, aes(x=cells, y=Expression, group=gene, colour=gene)) +
+#                 theme_bw() + geom_line(size=1) + xlab('CellRouter trajectory') +
+#                 guides(col=guide_legend(direction="vertical")) + #, nrow = 2
+#                 theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+#                       axis.text.x=element_blank(), axis.ticks=element_blank(),
+#                       legend.position = "right",
+#                       panel.border = element_blank()) +
+#                 theme(axis.line.x = element_line(color="black", size = 0.5),
+#                       axis.line.y = element_line(color="black", size = 0.5))+
+#                 scale_color_manual("", values=rainbow(length(geneList))) +
+#                 ggtitle(t)
+#               #scale_color_brewer("", palette = 'Set1')
+#               plotlist[[t]] <- g1
+#               
+#             }
+#             pdf(filename, width=width, height=height)
+#             #print(g1)
+#             multiplot(plotlist = plotlist, cols = columns)
+#             dev.off()
+#             print(g1)
+#             
+#             
+#           }
+# )
+
 setGeneric("plottrajectories", function(object, trajectories, geneList, rescale, columns=5, width=23, height=15, filename, ...) standardGeneric("plottrajectories"))
 setMethod("plottrajectories",
           signature="CellRouter",
           definition=function(object, trajectories, geneList, rescale, columns, width, height, filename){
             
             library(smoother)
-            
+          
             plotlist <- list()
+            alldfs <- data.frame()
             for(t in trajectories){
               plots <- list()
               trajectory <- object@pathsinfo$path[[t]]
               x_axis <- 1:length(trajectory) #trajectory
-              for(gene_id in geneList){
+              geneList2 <- intersect(geneList, rownames(object@pathsinfo$distr[[t]]))
+              for(gene_id in geneList2){
                 #y_axis <- as.numeric(object@ndata[gene_id, trajectory])
                 y_axis <- as.numeric(object@pathsinfo$distr[[t]][gene_id, ])
                 lo <- loess(y_axis~x_axis)
@@ -2501,27 +2662,30 @@ setMethod("plottrajectories",
               if(!rescale){
                 tables$Expression <- rescale(tables$Expression, newrange = c(0,1))
               }
-              g1 <- ggplot(tables, aes(x=cells, y=Expression, group=gene, colour=gene)) +
-                theme_bw() + geom_line(size=1) + xlab('CellRouter trajectory') +
-                guides(col=guide_legend(direction="vertical")) + #, nrow = 2
-                theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-                      axis.text.x=element_blank(), axis.ticks=element_blank(),
-                      legend.position = "right",
-                      panel.border = element_blank()) +
-                theme(axis.line.x = element_line(color="black", size = 0.5),
-                      axis.line.y = element_line(color="black", size = 0.5))+
-                scale_color_manual("", values=rainbow(length(geneList))) +
-                ggtitle(t)
-              #scale_color_brewer("", palette = 'Set1')
-              plotlist[[t]] <- g1
-              
+              tables$trajectory <- t 
+              alldfs <- rbind(alldfs, tables)
             }
             pdf(filename, width=width, height=height)
+            g1 <- ggplot(alldfs, aes(x=cells, y=Expression, group=gene, colour=gene)) +
+              theme_bw() + geom_line(size=1) + xlab('CellRouter trajectory') +
+              guides(col=guide_legend(direction="vertical")) + #, nrow = 2
+              theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+                    axis.text.x=element_blank(), axis.ticks=element_blank(),
+                    legend.position = "right",
+                    panel.border = element_blank(),
+                    strip.background = element_rect(colour="white", fill="white")) +
+              theme(axis.line.x = element_line(color="black", size = 0.5),
+                    axis.line.y = element_line(color="black", size = 0.5))+
+              scale_color_manual("", values=rainbow(length(geneList))) + 
+              facet_wrap(~trajectory, ncol = columns, scales='free')
+            #scale_color_brewer("", palette = 'Set1')
+            #plotlist[[t]] <- g1
             #print(g1)
-            multiplot(plotlist = plotlist, cols = columns)
-            dev.off()
+            #multiplot(plotlist = plotlist, cols = columns)
             print(g1)
-            
+            dev.off()
+           
+            plot(g1) 
             
           }
 )
@@ -2546,7 +2710,7 @@ setMethod("plotpaths",
                   y_axis <- path_distr$distr[[path]][gene_id,]
                   df <- data.frame(cells=x_axis, Expression=as.numeric(y_axis), population=sampTab[names(y_axis),'population'])
                   df$cells <- factor(df$cells, levels=df$cells)
-                  df$population <- factor(df$population, levels=df$population)
+                  df$population <- factor(df$population, levels=unique(df$population))
                   num_subpops <- length(unique(df$population))
                   colors <- sampTab[names(y_axis), 'colors']
                   names(colors) <- as.vector(df$population)
@@ -2618,8 +2782,34 @@ setMethod("plot3DExpression",
           }
 )
 
+plotReducedDimension <- function(object, width, height, filename){
+#names(colors) <- unique(scores$group)
+  annotation <- 'population'
+  scores <- as.data.frame(object@rdimension)
+  scores <- scores[rownames(object@sampTab),]
+  colnames(scores) <- c('Dim_1', 'Dim_2')
+  scores$group <- as.vector(object@sampTab[[annotation]])
+  labels <- nodeLabels(object@sampTab, annotation)
+  scores[names(labels),'label'] <- labels
+  colors <- unique(object@sampTab$colors)
+  names(colors) <- unique(as.vector(object@sampTab$population))
+  
+  pdf(file=filename, width=width, height=height)
+  g1 <- ggplot(scores,aes(x = Dim_1, y=Dim_2, colour=factor(group), label=labels)) + 
+    geom_point(size=1.5) + theme_bw() + geom_text(color='black', size=3) +
+    ggtitle('')  +  scale_color_manual("", values=colors) +
+    theme(legend.position='none') + xlab('Dim 1') + ylab('Dim 2') +
+    theme(panel.border = element_rect(fill = NA, colour = "white"),
+          strip.background = element_blank()) +
+    theme(axis.line = element_line(colour = "black"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_blank(), panel.background = element_blank())
+  print(g1)
+  dev.off()
+  plot(g1)
+}
 
-## color Dimensionality Reduction plot by expression of selected genes
 setGeneric("plotDRExpression", function(object, genelist, logTransform=TRUE, columns=5, width=23, height=15, filename) standardGeneric("plotDRExpression"))
 setMethod("plotDRExpression",
           signature="CellRouter",
@@ -2629,26 +2819,75 @@ setMethod("plotDRExpression",
             matrix <- object@rdimension
             plots <- list()
             scores <- as.data.frame(matrix)
+            colnames(scores) <- c('Dim_1', 'Dim_2')
+            dfs <- data.frame()
             for(gene in genelist){
               expr <- object@ndata[gene,rownames(matrix)]
               if(logTransform){
                 expr <- log(expr + 1)
               }
               scores$GENE <- as.numeric(expr)
-              p1 <- ggplot(scores,aes(x = tSNE1, y=tSNE2, colour=GENE)) + geom_point(size=0.1) + theme_bw() +
+              scores$gene <- gene
+              dfs <- rbind(dfs, scores)
+              #plots[[gene]] <- p1
+            }
+            dfs$gene <- factor(dfs$gene, levels=genelist) 
+            pdf(file=filename, width=width, height=height)
+            #multiplot(plotlist = plots, cols=columns)
+            p1 <- ggplot(dfs,aes(x = Dim_1, y=Dim_2, colour=GENE)) + geom_point(size=0.1) + theme_bw() +
+              scale_colour_gradientn(name = "Expression", colours=rev(rainbow(4))) +
+              ylab('Dim 2') + xlab('Dim 1') +
+              theme(panel.border = element_rect(fill = NA, colour = "white"),
+                    strip.background = element_blank()) +
+              theme(axis.line = element_line(colour = "black"),
+                    panel.grid.major = element_blank(),
+                    panel.grid.minor = element_blank(),
+                    panel.border = element_blank(), panel.background = element_blank()) +
+              theme(legend.position="right", 
+                    strip.background = element_rect(colour="white", fill="white")) +
+              #facet_wrap(~gene, ncol = columns, scales='free')
+              facet_wrap(~gene, ncol = columns)
+              
+            print(p1)
+            dev.off();
+            #multiplot(plotlist = plots, cols=columns)
+            plot(p1)
+          }
+)
+
+
+
+# ## color Dimensionality Reduction plot by expression of selected genes
+setGeneric("plotDRExpression2", function(object, genelist, logTransform=TRUE, columns=5, width=23, height=15, filename) standardGeneric("plotDRExpression2"))
+setMethod("plotDRExpression2",
+          signature="CellRouter",
+          definition=function(object, genelist, logTransform, columns=5, width=23, height=15, filename){
+
+            #plotDRExpression <- function(expDat, matrix, geneList, width=10, height=3.5, num_columns=2, filename){
+            matrix <- object@rdimension
+            plots <- list()
+            scores <- as.data.frame(matrix)
+            colnames(scores) <- c('Component1', 'Component2')
+            for(gene in genelist){
+              expr <- object@ndata[gene,rownames(matrix)]
+              if(logTransform){
+                expr <- log(expr + 1)
+              }
+              scores$GENE <- as.numeric(expr)
+              p1 <- ggplot(scores,aes(x = Component1, y=Component2, colour=GENE)) + geom_point(size=0.1) + theme_bw() +
                 ggtitle(gene)  + scale_colour_gradientn(name = "Expression", colours=rev(rainbow(4))) +
                 theme(panel.grid.minor.x = element_blank(), panel.grid.minor.y = element_blank()) +
                 theme(panel.grid.major.x = element_blank(), panel.grid.major.y = element_blank()) +
                 theme(panel.border=element_rect(fill = NA, colour=alpha('black', 1),size=1)) +
                 theme(legend.position="right")
-              
+
               plots[[gene]] <- p1
             }
             pdf(file=filename, width=width, height=height)
             multiplot(plotlist = plots, cols=columns)
             dev.off();
             multiplot(plotlist = plots, cols=columns)
-            
+
           }
 )
 
@@ -2729,17 +2968,80 @@ setMethod("plotenrichment",
           }
 )
 
-setGeneric("pathwayenrichment", function(object, names, species, annotation, ids) standardGeneric("pathwayenrichment"))
+regulatornetwork <- function(x, genelist, nrow, 
+                             ncol, width, height, filename){
+  nets <- list()
+  nets2 <- list()
+  for(t in names(x)){
+    for(n in genelist){
+      genes <- x[[t]]$targets[[n]]
+      if(length(genes) > 0){
+        genes <- c(n, genes)
+        rgrn <- igraph::induced.subgraph(ggrn, 
+                                         vids=unlist(igraph::neighborhood(graph=ggrn,order=0,
+                                                                          nodes=genes)))
+        remove <- V(rgrn)$name[igraph::degree(rgrn)==0]
+        rgrn <- igraph::delete.vertices(rgrn, remove)
+        V(rgrn)$color <- cellrouter@correlation[[t]][V(rgrn)$name]
+        V(rgrn)$size <- log(igraph::degree(rgrn)+1)
+        
+        g <- fortify(rgrn)
+        g$network <- n
+        g$transition <- t
+        name <- paste(t,n,sep='_')
+        nets2[[name]] <- rgrn
+        nets[[name]] <- g
+      }
+    }
+  }
+  l <- do.call(rbind, nets)
+  l$network <- factor(l$network, levels=regulators)
+  l$label[which(l$type == 'Target')] <- ""
+  ##choose a threshold for each network independently.
+  q <- quantile(l$color, 0.5)
+  xxx <- l[which(l$type == 'Regulator'),]
+  xxx <- as.vector(xxx[which(xxx$color < q), 'label'])
+  xxx <- xxx[!(xxx %in% genelist)]
+  l$label[l$label %in% xxx] <- ""
+  
+  set.seed(1)
+  pdf(file=filename, width=width, height=height)
+  g <- ggplot(data = l, aes(from_id = from, to_id = to)) +
+    #geom_net(aes(colour = props, size=size, label=label), layout.alg = "kamadakawai",
+    geom_net(aes(colour = color, size=size, label=label), layout.alg = "kamadakawai", 
+             labelon = TRUE, vjust = -0.6, ecolour = "grey60",
+             directed =FALSE, fontsize = 2, ealpha = 0.1, labelcolour = 'black',
+             fiteach=T, arrowsize = 1) +
+    xlim(c(-0.1, 1.1)) + ylim(-0.1, 1.1) +
+    theme_net() + theme(legend.position = "bottom") +
+    #scale_colour_manual(values = c('lightgreen', 'red','orange')) +
+    #scale_colour_brewer("", palette = 'Paired') +
+    scale_colour_gradientn(colours = c('cyan', 'white', 'red')) +
+    facet_grid(network~transition, scales='free') +
+    theme(panel.border = element_rect(fill = NA, colour = "black"),
+          strip.background = element_rect(colour="black"))
+  #scale_colour_brewer("", palette = 'Set2')
+  print(g)
+  dev.off()
+
+  nets2  
+}
+
+setGeneric("pathwayenrichment", function(object, names, cc=NULL, species, annotation, ids) standardGeneric("pathwayenrichment"))
 setMethod("pathwayenrichment",
           signature="CellRouter",
-          definition=function(object, names, species, annotation, ids){
+          definition=function(object, names, cc=NULL, species, annotation, ids){
             
             ##up-regulated
             upregulated <- list()
             geneNames <- lapply(object@top.correlations$up, names)
-            geneNames <- lapply(geneNames, function(x){setdiff(x, cc)}) #remove cell cycle genes
+            if(!is.null(cc)){
+              cat('removing genes...\n')
+              geneNames <- lapply(geneNames, function(x){setdiff(x, cc)}) #remove a selected gene set
+            }
             geneList <- lapply(geneNames, function(x){convertIDs(ids, x, from='external_gene_name', to="entrezgene")})
             geneList <- lapply(geneList, names)
+            geneList <- lapply(geneList, function(x){x[!is.na(x)]})
             print('pathway enrichment for up-regulated genes')
             ck1 <- compareCluster(geneCluster = geneList[names], fun = "enrichPathway", organism = species, pvalueCutoff = 0.05, readable=T)
             #print('Here1')
@@ -2818,30 +3120,77 @@ setMethod("pathwaycluster",
                      cellwidth=8, cellheight = 8, annotation_col = ann[,c(4,6)], 
                      annotation_colors=ann_colors, clustering_method = 'ward.D', filename=filename)
             
+            pheatmap(pathways, border=TRUE, border_color = 'gray', 
+                     cluster_rows = FALSE, cluster_cols = FALSE,
+                     cellwidth=8, cellheight = 8, annotation_col = ann[,c(4,6)], 
+                     annotation_colors=ann_colors, clustering_method = 'ward.D')
+            
             pathways
           }
 )
 
-#CellRouter_utils_symbols.R/ cellrouter_analysis_waterfall_datasets.R
-correlationdistribution <- function(object, selected.paths, method, pseudotime, direction, colors, width, height, filename){
-#correlationdistribution <- function(corsPaths,selected_paths, overallPseudotime, num_paths, direction, colors, width, height, filename){
-  corsPaths <- object@top.correlations
+robustness2 <- function(correlations, selected.paths, direction){
+  #correlationdistribution <- function(corsPaths,selected_paths, overallPseudotime, num_paths, direction, colors, width, height, filename){
   x <- list()
-  for(path in names(corsPaths[[direction]][selected.paths])){
-    if(method=='Monocle'){
-      x[[path]] <- data.frame(CellRouter=corsPaths[[direction]][[path]], Monocle=pseudotime[names(corsPaths[[direction]][[path]])],
-                            pathid=rep(path, length(corsPaths[[direction]][[path]])))
-    }else if(method=='Waterfall'){
-    x[[path]] <- data.frame(CellRouter=corsPaths[[direction]][[path]], Waterfall=pseudotime[names(corsPaths[[direction]][[path]])],
-                            pathid=rep(path, length(corsPaths[[direction]][[path]])))
-    }
+  for(ss in names(correlations)){
+    p <- list()
+    tmp <- correlations[[ss]][[direction]]
+    tmp <- as.data.frame(do.call(rbind, lapply(tmp, function(x){length(x[x > 0.5])})))
+    tmp$subsample <- ss
+    colnames(tmp) <- c('num_genes', 'subsample')
+    tmp$transition <- rownames(tmp)
+    
+    x[[ss]] <- tmp
   }
   x <- do.call(rbind, x)
   df <- x
+  
+  #df.m <- melt(df, id.vars=c('subsample', 'transition'))
+  print(mean(df$value))
+  #pdf(file=filename, width=width, height=height)
+  g <- ggplot(df, aes(x=subsample, y=num_genes, fill=transition)) + #geom_boxplot(alpha=.9) + #geom_violin(scale="width", colour="black") +
+    geom_bar(stat='identity', position='dodge') + theme_bw() + xlab("") + 
+    ylab("# of correlated genes\ncor > 0.5 or cor < -0.5") + theme(legend.position="none") +
+    #theme(axis.text.x = element_text(size=rel(1), angle=00, hjust=1)) +
+    geom_hline(aes(yintercept = mean(df$num_genes), color='black')) +
+    theme(axis.line=element_blank(),
+          #axis.text.y=element_blank(),
+          axis.ticks=element_blank(),
+          axis.title.y=element_blank(),
+          legend.position="top",
+          panel.background=element_blank(),
+          panel.grid.major=element_blank(),
+          panel.grid.minor=element_blank(),
+          plot.background=element_blank(),
+          panel.border=element_rect(fill = NA, colour=alpha('black', 1),size=1)) +
+    #scale_fill_manual(name="", values=c(colors)) + coord_flip()
+    scale_fill_brewer("", palette = 'Set1') + coord_flip()
+    
+  plot(g)
+  #dev.off()
+}
 
-  df.m <- melt(df, id.vars=c('pathid'))
-  pdf(file=filename, width=width, height=height)
-  g <- ggplot(df.m, aes(x=pathid, y=value, fill=variable)) + geom_boxplot(alpha=.9) + #geom_violin(scale="width", colour="black") +
+robustness.autocorrelation <- function(correlations, selected.paths){
+  #correlationdistribution <- function(corsPaths,selected_paths, overallPseudotime, num_paths, direction, colors, width, height, filename){
+  x <- list()
+  for(ss in names(correlations)){
+    p <- list()
+    for(path in names(correlations[[ss]][selected.paths])){
+      p[[path]] <- data.frame(correlation=correlations[[ss]][[path]], 
+                              pathid=rep(path, length(correlations[[ss]][[path]])),
+                              subsample=rep(ss, length(correlations[[ss]][[path]])))
+      
+    }
+    p <- do.call(rbind, p)
+    x[[ss]] <- p
+  }
+  x <- do.call(rbind, x)
+  df <- x
+  
+  df.m <- melt(df, id.vars=c('pathid', 'subsample'))
+  print(mean(df.m$value))
+  #pdf(file=filename, width=width, height=height)
+  g <- ggplot(df.m, aes(x=subsample, y=value, fill=pathid)) + geom_boxplot(alpha=.9) + #geom_violin(scale="width", colour="black") +
     theme_bw() + xlab("") + ylab("Correlation with pseudotime") + theme(legend.position="none") +
     #theme(axis.text.x = element_text(size=rel(1), angle=00, hjust=1)) +
     theme(axis.line=element_blank(),
@@ -2854,9 +3203,10 @@ correlationdistribution <- function(object, selected.paths, method, pseudotime, 
           panel.grid.minor=element_blank(),
           plot.background=element_blank(),
           panel.border=element_rect(fill = NA, colour=alpha('black', 1),size=1)) +
-    scale_fill_manual(name="", values=c(colors)) + coord_flip()
+    #scale_fill_manual(name="", values=c(colors)) + coord_flip()
+    scale_fill_brewer("", palette = 'Paired') + coord_flip()
   print(g)
-  dev.off()
+  #dev.off()
 }
 
 
@@ -2869,8 +3219,8 @@ meanexpressionsubpopulations <- function(object, geneList, column, filename, col
   for(g in geneList){
     averages <- vector()
     name.averages <- vector()
-    for(i in unique(sampTab$population)){
-      cells.population <- rownames(sampTab[which(sampTab$population == i),])
+    for(i in unique(sampTab[[column]])){
+      cells.population <- rownames(sampTab[which(sampTab[[column]] == i),])
       p <- mean(as.numeric(object@ndata[g, cells.population]))
       averages <- append(p, averages)
       name.averages <- append(i, name.averages)
@@ -2881,7 +3231,7 @@ meanexpressionsubpopulations <- function(object, geneList, column, filename, col
     means$p <- factor(names(averages), levels=names(averages))
     
     colors <- unique(sampTab$colors)
-    names(colors) <- unique(sampTab$population)
+    names(colors) <- unique(sampTab[[column]])
     #p <- ggplot(genes.m, aes(x=conditions, y=value, fill=conditions)) + geom_boxplot(alpha=.9, notch = TRUE) + 
     p <- ggplot(means, aes(x=p, y=mean, fill=p)) + 
       geom_bar(stat ="identity") +
@@ -2954,6 +3304,92 @@ expressionsubpopulations <- function(object, geneList, column, filename, cols, w
 
 
 
+violinsubpopulations2 <- function(object, geneList, column, filename, cols, width=10, height=5){
+  plots <- list()
+  sampTab <- object@sampTab
+  graph <- object@graph
+  expDat <- object@ndata
+  T0 <- expDat
+  allgenes <- data.frame()
+  for(g in geneList){
+    #cat(time, ' ', dim(T0), '\n')
+    genes <- as.data.frame(t(T0[g,]))
+    genes$gene <- g
+    genes$conditions <- as.vector(sampTab[,column])
+    genes.m <- melt(genes, id.var=c('gene',"conditions"))
+    allgenes <- rbind(allgenes, genes.m)
+  }
+  
+  colors <- unique(sampTab$colors)
+  names(colors) <- unique(sampTab$population)
+  allgenes$conditions <- factor(allgenes$conditions, levels=unique(allgenes$conditions))
+  #p <- ggplot(genes.m, aes(x=conditions, y=value, fill=conditions)) + geom_boxplot(alpha=.9, notch = TRUE) + 
+  p <- ggplot(allgenes, aes(x=conditions, y=value, fill=conditions)) + 
+    geom_violin(scale="width") + stat_summary(fun.y=mean,geom='point') + #geom_boxplot(alpha=.9) + 
+    #geom_jitter(position='identity', size=1) + 
+    theme_bw() + xlab("") + ylab("Gene expression") + theme(legend.position="none") +
+    theme(axis.text.x = element_text(size=rel(1), angle=45, hjust=1),
+          panel.grid.minor = element_blank(),
+          panel.grid.major = element_blank(),
+          axis.ticks=element_blank(),
+          panel.border=element_rect(fill = NA, colour=alpha('black', 1),size=1)) +
+    scale_fill_manual("", values=colors) + 
+    facet_wrap(~variable, ncol = cols) + coord_flip()
+    #facet_grid(variable ~ ., scales='free') + coord_flip()
+  
+  
+  #pdf(file=filename, width=10, height=7)
+  pdf(file=filename, width=width, height=height)
+  #multiplot(plotlist = plots, cols=cols)
+  print(p)
+  dev.off();
+  #multiplot(plotlist = plots, cols=cols)
+}
+
+violinsubpopulations <- function(object, geneList, column, filename, cols, width=10, height=5){
+  plots <- list()
+  sampTab <- object@sampTab
+  graph <- object@graph
+  expDat <- object@ndata
+  T0 <- expDat
+  allgenes <- data.frame()
+  for(g in geneList){
+    #cat(time, ' ', dim(T0), '\n')
+    genes <- as.data.frame(t(T0[g,]))
+    genes$gene <- g
+    genes$conditions <- as.vector(sampTab[,column])
+    genes.m <- melt(genes, id.var=c('gene',"conditions"))
+    allgenes <- rbind(allgenes, genes.m)
+  }
+  
+  colors <- unique(sampTab$colors)
+  names(colors) <- unique(sampTab$population)
+  allgenes$conditions <- factor(allgenes$conditions, levels=unique(allgenes$conditions))
+  #p <- ggplot(genes.m, aes(x=conditions, y=value, fill=conditions)) + geom_boxplot(alpha=.9, notch = TRUE) + 
+  p <- ggplot(allgenes, aes(x=conditions, y=value, fill=conditions)) + 
+    geom_violin(scale="width") + stat_summary(fun.y=mean,geom='point') + #geom_boxplot(alpha=.9) + 
+    #geom_jitter(position='identity', size=1) + 
+    theme_bw() + xlab("") + ylab("Gene expression") + theme(legend.position="none") +
+    theme(axis.text.x = element_text(size=rel(1), angle=45, hjust=1),
+          panel.grid.minor = element_blank(),
+          panel.grid.major = element_blank(),
+          axis.ticks=element_blank(),
+          panel.border=element_rect(fill = NA, colour=alpha('black', 1),size=1)) + ggtitle(g) +
+    scale_fill_manual("", values=colors) + 
+    #facet_wrap(variable ~ ., ncol = 1) + coord_flip()
+    facet_grid(variable ~ ., scales='free') + coord_flip()
+    
+  
+  #pdf(file=filename, width=10, height=7)
+  pdf(file=filename, width=width, height=height)
+  #multiplot(plotlist = plots, cols=cols)
+  print(p)
+  dev.off();
+  #multiplot(plotlist = plots, cols=cols)
+}
+
+
+
 
 convertID <- function(ids, ens, from, to){
   symbol <-  ids[which(ids[,from]==ens), to]
@@ -3018,7 +3454,8 @@ cRamp2 <- function(x){
 }
 cRampClust <- function(x, num_colors){
   library(RColorBrewer)
-  cols <- colorRamp(rev(rainbow(num_colors)))(range01(x))
+  #cols <- colorRamp(rev(rainbow(num_colors)))(range01(x))
+  cols <- colorRamp(rev(brewer.pal(num_colors, "Set1")))(range01(x))
   #cols <- colorRamp(c('deepskyblue3', 'lightblue', 'orange','darkred'))(range01(x))
   #color = grDevices::colors()[grep('gr(a|e)y', grDevices::colors(), invert = T)]
   #cols <- color[sample(num_colors)]
@@ -3094,6 +3531,242 @@ center_with_threshold <- function(center_data, threshold){
   return(center_data)
 }
 
+
+
+
+### GRN reconstruction code: from CellNet (Cahan et al., Cell 2014) #############
+mat_zscores<-function(corrMat){
+  z_row<-scale(t(corrMat))**2;
+  cat(dim(z_row),"\n");
+  z_col<-scale(corrMat)**2;
+  cat(dim(z_col),"\n");
+  ans<-sqrt( z_row+z_col);
+  ans;  
+}
+
+globalGRN <- function(expr, tfs, threshold){
+  tfs <- intersect(tfs, rownames(expr))
+  corrAll <- abs(cor(t(expr)))
+  zscores <- mat_zscores(corrAll)
+  zscores <- zscores[,tfs]
+  grnTable <- extractRegulators(zscores, corrAll, rownames(expr), threshold)
+  
+  grnTable
+}
+
+#extract transcriptional regulators
+extractRegulators <- function(zscores, corrMatrix, genes, threshold){
+  targets <- vector()
+  regulators <- vector()
+  zscoresX <- vector()
+  correlations <- vector()
+  
+  targets <- rep('', 1e6)
+  regulators <- rep('', 1e6)
+  zscoresX <- rep('', 1e6)
+  correlations <- rep('', 1e6)
+  
+  i <- 1
+  j <- 1
+  for(target in genes){
+    x <- zscores[target,]
+    regs <- names(which(x > threshold))
+    if(length(regs) > 0){
+      zzs <- x[regs]
+      ncount <- length(zzs)
+      corrs <- corrMatrix[target, regs]
+      j <- i + ncount - 1
+      targets[i:j] <- rep(target, ncount)
+      regulators[i:j] <- regs
+      zscoresX[i:j] <- zzs
+      correlations[i:j] <- corrs
+      i <- j + 1
+    }
+  }
+  targets <- targets[1:j]
+  regulators <- regulators[1:j]
+  zscoresX <- zscoresX[1:j]
+  correlations <- correlations[1:j]
+  
+  data.frame(target=targets, reg=regulators, zscore=zscoresX, corr=correlations)
+}
+
+ig_scaleV<-function# return a vector of scaled sizes for a vector of verticies
+(vals, # values associated with verticies.  Can be number of sub-net nodes (members) or degree (number of edges))
+ sf=5, # scaling factor, so sf=5 means that the maximum vertix will have cex=5)
+ minVal=2
+){
+  vals<-vals-min(vals); # shift such that m
+  vals<-vals/max(vals); # scale such that range vals == 0,1
+  minVal+(vals*sf); # scale to sf
+}
+
+
+ig_tabToIgraph<-function# return a iGraph object
+(grnTab, ### table of TF, TF, maybe zscores, maybe correlations
+ simplify=FALSE, # failed when iranges is loaded...
+ directed=FALSE,
+ weights=TRUE
+){
+  tmpAns<-as.matrix(grnTab[,c("TF", "TG")]);
+  regs<-as.vector(unique(grnTab[,"TF"]));
+  ###cat("Length TFs:", length(regs), "\n");
+  targs<-setdiff( as.vector(grnTab[,"TG"]), regs);
+  
+  ###  cat("Length TGs:", length(targs), "\n");
+  myRegs<-rep("Regulator", length=length(regs));
+  myTargs<-rep("Target", length=length(targs));
+  
+  types<-c(myRegs, myTargs);
+  verticies<-data.frame(name=c(regs,targs), label=c(regs,targs), type=types);
+  
+  iG<-graph.data.frame(tmpAns,directed=directed,v=verticies);
+  
+  if(weights){
+    #E(iG)$weight<-grnTab$weight;    
+    #E(iG)$weight<-as.numeric(as.character(grnTab$zscore));    
+    #print(range(as.numeric(as.character(grnTab$corr))))
+    E(iG)$weight<-as.numeric(as.character(grnTab$corr));   
+    #print(range(E(iG)$weight))
+  }
+  
+  if(simplify){
+    #iG<-igraph::simplify(iG, remove.loops = TRUE, remove.multiple = FALSE);
+    iG<-igraph::simplify(iG);
+    #print(range(E(iG)$weight))
+  }
+  V(iG)$nEnts<-1;
+  
+  iG;
+}
+
+
+
+ig_convertSmall<-function# change igraph attributes so that it is suitable for plotting a small GRN
+(iG, ###  in which regulators and targets are already specified
+ rCol="#F46D43", # default color for regulator nodes
+ tCol="#66C2A5",  # default color for target nodes
+ vScale=1,
+ exponent=2.6
+){
+  
+  E(iG)$color<-rgb(0,0,.5,alpha=.05);
+  
+  V(iG)[type=='Regulator']$label<-V(iG)[type=='Regulator']$name;
+  #V(iG)[type=='Target']$label<-"";
+  V(iG)$size<-ig_scaleV( igraph::degree(iG), sf=vScale, minVal=4);
+  V(iG)[type=='Regulator']$shape<-"csquare";
+  V(iG)[type=='Regulator']$label.color<-"black";
+  V(iG)[type=='Regulator']$label.cex<-.75;
+  V(iG)[type=='Target']$label.color<-"black";
+  V(iG)[type=='Target']$label.cex<-.5;
+  V(iG)[type=='Target']$shape<-"circle";
+  #V(iG)[type=='Target']$frame.color=NA;
+  #V(iG)$label.degree<- -1*pi/2;
+  #V(iG)$label.dist=.25;
+  nRegs<-length(V(iG)[type=='Regulator']$name);
+  nTargs<-length(V(iG)[type=='Target']$name);
+  #rCols<-unlist(lapply(rep(rCol, nRegs), mp_makeTransparent ) );
+  rCols<-rep(rCol, nRegs);
+  tCols<-rep(tCol, nTargs);
+  #tCols<-unlist(lapply(rep(tCol, nTargs), mp_makeTransparent ) );
+  V(iG)[type=='Regulator']$color<-rCols;
+  V(iG)[type=='Target']$color<-tCols;  
+  #iG$layout<-layout.lgl#layout.fruchterman.reingold(iG, niter=10000)#layout.fruchterman.reingold(iG);
+  
+  iG;
+}
+mp_assignColors<-function # takes a vector of values and returns a vecotr of colors (low=blue, high=red)
+(vect){
+  require(gplots);
+  xcols<-rev(heat.colors(length(vect))) #bluered(length(vect));
+  mycols<-rep('', length(vect));
+  mycols[order(vect)]<-xcols;
+  mycols;
+}
+
+
+
+ig_NiceGraph<-function# returns a pretty graph given a grnTab and expression data
+(object,
+ myG,
+ p,# result of running induced.subgraph(graphX, v=genes), and ig_convertSmall
+ vLabels='Regulator'
+ # bold=NULL){
+){
+  #  myG<-ig_convertSmall(myG);
+  # calculate correlations between TF->TG
+  expDat <- object@ndata
+  lEdges<-length(E(myG));
+  myCors<-rep(0, length=lEdges);
+  edgeColors<-rep("lightblue", length=lEdges);
+  for(i in seq(lEdges)){
+    edgeI<-V(myG)$name[get.edge(myG, i)];
+    tf<-edgeI[1];
+    tg<-edgeI[2];
+    #cat(tf, "->", tg,":");
+    myCors[i]<-sign(cor(as.numeric(expDat[tf,]), as.numeric(expDat[tg,])));
+    if(myCors[i]>0){
+      edgeColors[i]<-"red";
+    }
+  }
+  E(myG)$color<-edgeColors;  
+  E(myG)$arrow.size=.2;
+  
+  ## node colors
+  genes<-V(myG)$name;
+  genes <- intersect(names(object@correlation[[p]]), genes)
+  #geneVals<-apply(expDat[genes,], 1, mean);
+  geneVals<-object@correlation[[p]][genes]
+  V(myG)$color<-cRamp2(geneVals)#mp_assignColors(geneVals);
+  
+  # node size
+  outdegree<-igraph::degree(myG, mode='out');
+  V(myG)$size<-ig_scaleV( outdegree, sf=10, 4);
+  
+  #V(myG)[V(myG)]$label<-'';
+  # node labels
+  if(length(vLabels)==1){
+    if(vLabels=="Target"){
+      V(myG)[V(myG)$type=="Regulator"]$label<-'';
+    }
+    else{
+      if(vLabels=="Regulator"){
+        V(myG)[V(myG)$type=="Target"]$label<-'';
+      }
+    }
+  }
+  else{
+    others<-setdiff(V(myG)$name, vLabels);
+    xi<-match(others, V(myG)$name);
+    V(myG)[xi]$label<-'';
+  }
+  
+  if(FALSE){
+    # label face
+    if(!is.null(bold)){
+      xi<-match(bold, V(myG)$name);
+      cat(xi,"\n");
+      V(myG)[xi]$label.font=2;
+    }
+  }
+  
+  myG;
+}
+############### end of GRN code #######
+
+
+buildGRN <- function(species, ndata, genes2use, zscore, filename){
+  tfs <- find_tfs(species = species)
+  grn <- globalGRN(ndata[genes2use,], tfs, zscore)
+  colnames(grn)[1:2]<-c("TG", "TF");
+  ggrn<- ig_tabToIgraph(grn, simplify = TRUE) #simplify changes the weights...
+  save(ggrn, file=filename)
+  
+  ggrn
+}
+
+
 getIndexes <- function(ann_col, ann_row){
   ann_col$ID <- as.vector(1:nrow(ann_col))
   ref_groups <- split(ann_col, as.factor(ann_col$population))
@@ -3134,4 +3807,166 @@ getIndexes <- function(ann_col, ann_row){
   
   list(colsep=ref_seps, rowsep=ref_seps_c)
   
+}
+
+detectGenes <- function(expr, min_expr=0.1){
+  detected <- list()  
+  cells_detected <- do.call(rbind, apply(expr, 2, function(x){return (data.frame(num_genes_detected=sum(x > min_expr)))}))
+  genes_detected <- do.call(rbind, apply(expr, 1, function(x){return (data.frame(num_cells_detected=sum(x > min_expr)))}))
+  detected[['genes_detected']] <- genes_detected
+  detected[['cells_detected']] <- cells_detected
+  
+  detected
+}
+
+
+#####
+find_genes_go<-function# find transcript factors
+(species='Hs', # species abbreviation
+ process,
+ category
+){
+  
+  cat("Loading gene annotations ...\n")
+  require(GO.db);
+  
+  if(species=='Hs'){
+    require(org.Hs.eg.db);
+    egSymbols<-as.list(org.Hs.egSYMBOL);
+    goegs<-as.list(org.Hs.egGO2ALLEGS);
+  }
+  else{
+    require(org.Mm.eg.db);
+    egSymbols<-as.list(org.Mm.egSYMBOL);
+    goegs<-as.list(org.Mm.egGO2ALLEGS);
+  }
+  
+  goterms<-as.list(GOTERM);
+  goids<-names(goegs);
+  onts<-lapply(goids, Ontology);
+  bps<-onts[onts==category];
+  #bps<-onts[onts=='BP'];
+  #bps<-onts[onts=='CC'];
+  #bps<-onts[onts=='MF'];
+  goids<-names(unlist(bps));
+  
+  cat("matching gene symbols and annotations")
+  gobpList<-list();
+  for(goid in goids){
+    egs <- goegs[[ goid ]];
+    goterm<-Term(goterms[[goid]]);
+    genes<-sort(unique(as.vector(unlist( egSymbols[egs] ))));
+    gobpList[[goterm]]<-genes;
+  }
+  #save(gobpList, file="GO_MF_database_September_14_2015.R")
+  regNames<-names(gobpList)[grep(process, names(gobpList))];
+  genes<- unique(unlist(gobpList[regNames]));
+  #save(genes, file='cell_adhesion_GO0007155_August_18_2015.R')
+  
+  return (list(regNames=regNames, genes=genes)) 
+}
+
+# Multiple plot function
+#
+# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
+# - cols:   Number of columns in layout
+# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
+#
+# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
+# then plot 1 will go in the upper left, 2 will go in the upper right, and
+# 3 will go all the way across the bottom.
+#
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  library(grid)
+  
+  # Make a list from the ... arguments and plotlist
+  #plots <- c(list(...), plotlist) #comment this to plot several plots in list
+  plots <- plotlist
+  numPlots = length(plots)
+  
+  
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                     ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+  
+  if (numPlots==1) {
+    print(plots[[1]])
+    
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+    
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+      
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+
+
+find_tfs<-function# find transcript factors
+(species='Hs' # species abbreviation
+){
+  
+  #cat("Loading gene annotations ...\n")
+  suppressWarnings(suppressMessages(require(GO.db)));
+  
+  if(species=='Hs'){
+    suppressWarnings(suppressMessages(require(org.Hs.eg.db)));
+    egSymbols<-as.list(org.Hs.egSYMBOL);
+    goegs<-as.list(org.Hs.egGO2ALLEGS);
+  }
+  else{
+    suppressWarnings(suppressMessages(require(org.Mm.eg.db)));
+    egSymbols<-as.list(org.Mm.egSYMBOL);
+    goegs<-as.list(org.Mm.egGO2ALLEGS);
+  }
+  
+  goterms<-as.list(GOTERM);
+  goids<-names(goegs);
+  onts<-lapply(goids, Ontology);
+  bps<-onts[onts=='BP'];
+  goids<-names(unlist(bps));
+  
+  cat("matching gene symbols and annotations")
+  gobpList<-list();
+  for(goid in goids){
+    egs <- goegs[[ goid ]];
+    goterm<-Term(goterms[[goid]]);
+    genes<-sort(unique(as.vector(unlist( egSymbols[egs] ))));
+    gobpList[[goterm]]<-genes;
+  }
+  
+  ### newHsTRs<-gobpList[['regulation of transcription, DNA-dependent']];
+  regNames<-names(gobpList)[grep("regulation of transcription", names(gobpList))];
+  trs<- unique(unlist(gobpList[regNames]));
+  #cat("Regulation of transcription: ", length(trs),"\n");
+  #cat(regNames, '\n')
+  
+  mfs<-onts[onts=='MF'];
+  goidsMF<-names(unlist(mfs));
+  
+  gomfList<-list();
+  for(goid in goidsMF){
+    egs <- goegs[[ goid ]];
+    goterm<-Term(goterms[[goid]]);
+    genes<-sort(unique(as.vector(unlist( egSymbols[egs] ))));
+    gomfList[[goterm]]<-genes;
+  }
+  dbs<-gomfList[['DNA binding']];
+  #dbs<-gomfList[['RNA binding']];
+  #cat("DNA binding: ", length(dbs),"\n");
+  #cat("RNA binding: ", length(dbs),"\n");
+  sort(intersect(trs, dbs));
+  #sort(dbs)
 }

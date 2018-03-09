@@ -39,4 +39,4 @@ libdir <- 'path/to/CellRouter/'
 ### Citation
 If you use CellRouter, please cite:
 
-Edroaldo Lummertz da Rocha, R. Grant Rowe, Vanessa Lundin, Mohan Malleshaiah, Deepak Kumar Jha, Carlos R. Rambo, Hu Li , Trista E. North, James J. Collins & George Q. Daley. Reconstruction of complex single-cell trajectories using CellRouter. Nature Communications, 2018 (in press).
+Edroaldo Lummertz da Rocha, R. Grant Rowe, Vanessa Lundin, Mohan Malleshaiah, Deepak Kumar Jha, Carlos R. Rambo, Hu Li , Trista E. North, James J. Collins & George Q. Daley. Reconstruction of complex single-cell trajectories using CellRouter. Nature Communications. 2018 Mar 1;9(1):892. doi: 10.1038/s41467-018-03214-y.

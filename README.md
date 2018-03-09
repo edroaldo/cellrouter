@@ -32,7 +32,7 @@ libdir <- 'path/to/CellRouter/'
 ### <a name="example">Examples</a>
 
  1. [Analysis of mouse bone marrow single-cell RNA-seq profiling HSCs and mature cell types.](https://github.com/edroaldo/cellrouter/tree/master/stemid/StemID_BM_CellRouter.md)
- 2. [Analysis of multi-lineage differentiation from human HSPCs (tutorial in progress...).](https://github.com/edroaldo/cellrouter/stemnet/tutorial2.html)
+ 2. [Analysis of multi-lineage differentiation from human HSPCs.](https://github.com/edroaldo/cellrouter/tree/master/stemnet_differentiation/stemnet_differentiation.md)
  3. [Reconstruction of cell reprogramming trajectories (tutorial in progress...).](https://github.com/edroaldo/cellrouter/stemnet/tutorial3.html)
 
 

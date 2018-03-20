@@ -1,6 +1,6 @@
 # CellRouter
 
-Please, join our google groups to provide suggestions, report issues, discuss about CellRouter or request new features: https://groups.google.com/forum/#!forum/cellrouter/
+Please, join our google groups to provide suggestions, report issues, discuss about CellRouter or request new features: https://groups.google.com/forum/#!forum/cellrouter/. CellRouter was tested on Unix-based systems. Therefore, we strongly recommend to use CellRouter in Unix-based systems or Mac. CellRouter was not tested in Windows.
 
 ### Introduction
 CellRouter is a multifaceted single-cell analysis platform that identifies complex cell-state transition trajectories by using flow networks to explore the subpopulation structure of multi-dimensional, single-cell omics data. CellRouter integrates subpopulation identification, multi-state trajectories, and gene regulatory networks (GRNs) to provide new insights into cell-state transitions during lineage diversification, convergence, or cell reprogramming. For current tutorials illustrating how to use CellRouter, please take a look at the section [Examples](#example). CellRouter is an ongoing research project and we will keep providing more tutorials and applications. Please, do not hesitate to contact us!
@@ -12,7 +12,7 @@ Overview of CellRouter. Step (1) Starting from single cells representing multipl
 ### Installation
 To use CellRouter, clone/download this repository. You also need to install several packages:
 ```R
-list.of.packages <- c('reshape','reshape2','pheatmap','clusterProfiler','ReactomePA','plotrix','tsne','igraph','ggplot2,"DESeq",'mclust','grid','scde','gplots','genefilter', 'Rtsne', 'DESeq2')
+list.of.packages <- c('reshape','reshape2','pheatmap','clusterProfiler','ReactomePA','plotrix','tsne','igraph','ggplot2,"DESeq",'mclust','grid','scde','gplots','genefilter', 'Rtsne', 'DESeq2', 'cccd')
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 
 if(length(new.packages)) install.packages(new.packages, repos=c("http://cran.rstudio.com/", "https://bioconductor.org/biocLite.R"))
@@ -22,6 +22,11 @@ In case of a missing package after running the steps above, please install them 
 source('http://bioconductor.org/biocLite.R')
 biocLite('package_name')
 ```
+The package Vennerable also needs to be installed:
+```R
+install.packages("Vennerable", repos="http://R-Forge.R-project.org")
+```
+
 Then, source the CellRouter class and make sure you provide the correct directory for the Java libraries inside the folder "CellRouter", as specified by the variable 'libdir'.
 
 ```R

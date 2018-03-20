@@ -1,6 +1,6 @@
 # CellRouter
 
-Please, join our google groups to provide suggestions, report issues, discuss about CellRouter or request new features: https://groups.google.com/forum/#!forum/cellrouter/. CellRouter was tested on Unix-based systems. Therefore, we strongly recommend to use CellRouter in Unix-based systems or Mac. CellRouter was not tested in Windows.
+Please, join our google groups to provide suggestions, report issues, discuss about CellRouter or request new features: https://groups.google.com/forum/#!forum/cellrouter/. CellRouter was tested in Unix-based systems. Therefore, we strongly recommend to use CellRouter in Unix-based systems or Mac. CellRouter was not tested in Windows.
 
 ### Introduction
 CellRouter is a multifaceted single-cell analysis platform that identifies complex cell-state transition trajectories by using flow networks to explore the subpopulation structure of multi-dimensional, single-cell omics data. CellRouter integrates subpopulation identification, multi-state trajectories, and gene regulatory networks (GRNs) to provide new insights into cell-state transitions during lineage diversification, convergence, or cell reprogramming. For current tutorials illustrating how to use CellRouter, please take a look at the section [Examples](#example). CellRouter is an ongoing research project and we will keep providing more tutorials and applications. Please, do not hesitate to contact us!

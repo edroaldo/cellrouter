@@ -12,7 +12,7 @@ Overview of CellRouter. Step (1) Starting from single cells representing multipl
 ### Installation
 To use CellRouter, clone/download this repository. You also need to install several packages:
 ```R
-list.of.packages <- c('reshape','reshape2','pheatmap','clusterProfiler','ReactomePA','plotrix','tsne','igraph','ggplot2,"DESeq",'mclust','grid','scde','gplots','genefilter', 'Rtsne', 'DESeq2', 'cccd')
+list.of.packages <- c('reshape','reshape2','pheatmap','clusterProfiler','ReactomePA','plotrix','tsne','igraph','ggplot2','DESeq','mclust','grid','scde','gplots','genefilter', 'Rtsne', 'DESeq2', 'cccd')
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 
 if(length(new.packages)) install.packages(new.packages, repos=c("http://cran.rstudio.com/", "https://bioconductor.org/biocLite.R"))

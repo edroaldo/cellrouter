@@ -1,4 +1,4 @@
-# Updates
+# Updates (May 21, 2018)
 New version available! Please, check our updated tutorial. Updates include:
 1. Raw count/UMI data can be provided as input.
 2. Perform quality control on genes and cells

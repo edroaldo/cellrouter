@@ -7,12 +7,16 @@ working directory, pelase create a folder named "results". Then, inside
 the folder results, create a folder named "paths".
 
 Make sure you load the CellRouter class properly by doing:
-----------------------------------------------------------
 
     source('path/to/cellrouter/class/CellRouter_Class.R')
 
-Load metadata, Create a CellRouter object and add metadata information to it. The function addInfo can used to include metadata information in the CellRouter metadata table (<cellrouter@sampTab>). If you have clusters identified by other algorithm, you can use this function to perform all the analysis available in CellRouter using your previously identified clusters: just select the corresponding columns in the table <cellrouter@sampTab>.
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Load metadata, Create a CellRouter object and add metadata information
+to it. The function addInfo can used to include metadata information in
+the CellRouter metadata table (<cellrouter@sampTab>). If you have
+clusters identified by other algorithm, you can use this function to
+perform all the analysis available in CellRouter using your previously
+identified clusters: just select the corresponding columns in the table
+<cellrouter@sampTab>.
 
     library('dplyr')
     samples <- get(load('Paul_Cell_samples.R'))
@@ -30,7 +34,6 @@ Load metadata, Create a CellRouter object and add metadata information to it. Th
     #cellrouter <- filterCells(cellrouter, variables <- c("nGene", 'nUMI',"percent.mito"), thresholds.low <- c(500, 1000, -Inf), thresholds.high <- c(7000, Inf, 0.10))
 
 Normalize and scale the data, and perform principal component analysis
-----------------------------------------------------------------------
 
     cellrouter <- Normalize(cellrouter)
     cellrouter <- scaleData(cellrouter)
@@ -39,8 +42,11 @@ Normalize and scale the data, and perform principal component analysis
 
 ![](CellRouter_Paul_Tutorial_files/figure-markdown_strict/preprocess1-1.png)
 
-Based on the plot, we select 11 principal components for tSNE analysis. CellRouter includes helpful functions to visualize cell type annotations or clustering in the tSNE, PCA, or a customized dimensionality reduction technique. In case of a customized dimensionality reduction space, use the customSpace function
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Based on the plot, we select 11 principal components for tSNE analysis.
+CellRouter includes helpful functions to visualize cell type annotations
+or clustering in the tSNE, PCA, or a customized dimensionality reduction
+technique. In case of a customized dimensionality reduction space, use
+the customSpace function
 
     cellrouter <- computeTSNE(cellrouter, num.pcs = 11, seed=42, max_iter = 1000)
     cellrouter <- customSpace(cellrouter, cellrouter@tsne$cell.embeddings) #where matrix is a data.frame with coordinates of cells in the space of reduced dimensionality.
@@ -65,8 +71,16 @@ Based on the plot, we select 11 principal components for tSNE analysis. CellRout
 
 ![](CellRouter_Paul_Tutorial_files/figure-markdown_strict/dr-5.png)
 
-CellRouter includes helpful functions to perform differential expression analysis and idetify gene signatures based on annotations specified by the user. For example, below we perform a differential expression analysis between cell type annotations in the column "celltype" of the CellRouter metadata table (<cellrouter@sampTab>). The column "celltype" contains information for the broad populations: CMP, DC, Erythroid and GMP. It also allows to perform the differential test using any other column containing metadata. For example, we also identified gene signatures for clusters identified in the original study by Paul et al (column "celltype2"). Annotated heatmaps are also generated.
------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+CellRouter includes helpful functions to perform differential expression
+analysis and idetify gene signatures based on annotations specified by
+the user. For example, below we perform a differential expression
+analysis between cell type annotations in the column "celltype" of the
+CellRouter metadata table (<cellrouter@sampTab>). The column "celltype"
+contains information for the broad populations: CMP, DC, Erythroid and
+GMP. It also allows to perform the differential test using any other
+column containing metadata. For example, we also identified gene
+signatures for clusters identified in the original study by Paul et al
+(column "celltype2"). Annotated heatmaps are also generated.
 
     ### signatures based on sorted populations
     markers <- findSignatures(cellrouter, column = "celltype", pos.only = TRUE, fc.threshold = 0.5)
@@ -90,8 +104,8 @@ CellRouter includes helpful functions to perform differential expression analysi
 ![](CellRouter_Paul_Tutorial_files/figure-markdown_strict/de-1.png)
 
     ##            used  (Mb) gc trigger  (Mb) max used  (Mb)
-    ## Ncells  1507707  80.6    2637877 140.9  2637877 140.9
-    ## Vcells 44525522 339.8   84996754 648.5 84996675 648.5
+    ## Ncells  1507568  80.6    2637877 140.9  2637877 140.9
+    ## Vcells 44525099 339.7   84996683 648.5 84996252 648.5
 
     ### signatures based on clusters identified by Paul et al.
     markers <- findSignatures(cellrouter, column = "celltype2", pos.only = TRUE, fc.threshold = 0.5)
@@ -143,11 +157,11 @@ CellRouter includes helpful functions to perform differential expression analysi
 ![](CellRouter_Paul_Tutorial_files/figure-markdown_strict/de-2.png)
 
     ##            used  (Mb) gc trigger  (Mb)  max used  (Mb)
-    ## Ncells  1538696  82.2    2637877 140.9   2637877 140.9
-    ## Vcells 59375639 453.1  102076104 778.8 102076104 778.8
+    ## Ncells  1538557  82.2    2637877 140.9   2637877 140.9
+    ## Vcells 59375216 453.0  102076019 778.8 102076019 778.8
 
-CellRouter provides a function to perform graph-based clustering and another to perform model-based clustering
---------------------------------------------------------------------------------------------------------------
+CellRouter provides a function to perform graph-based clustering and
+another to perform model-based clustering
 
     #Graph-based clustering
     cellrouter <- findClusters(cellrouter, method="graph.clustering", num.pcs=15, k=20)
@@ -199,8 +213,8 @@ CellRouter provides a function to perform graph-based clustering and another to 
 ![](CellRouter_Paul_Tutorial_files/figure-markdown_strict/clustering1.2-1.png)
 
     ##            used  (Mb) gc trigger  (Mb)  max used  (Mb)
-    ## Ncells  1610145  86.0    2637877 140.9   2637877 140.9
-    ## Vcells 82627466 630.4  122571324 935.2 102076104 778.8
+    ## Ncells  1610023  86.0    2637877 140.9   2637877 140.9
+    ## Vcells 82627043 630.4  122571222 935.2 102076019 778.8
 
     top10 <- markers %>% group_by(population) %>% top_n(10, fc)
     filename <- 'results/heatmap_top_10_genes_CellRouter_clusters.png' #select how many cells to plot as well!
@@ -209,14 +223,23 @@ CellRouter provides a function to perform graph-based clustering and another to 
 ![](CellRouter_Paul_Tutorial_files/figure-markdown_strict/clustering1.2-2.png)
 
     ##             used   (Mb) gc trigger   (Mb)  max used   (Mb)
-    ## Ncells   1640833   87.7    2637877  140.9   2637877  140.9
-    ## Vcells 179657106 1370.7  256133216 1954.2 213375955 1628.0
+    ## Ncells   1640711   87.7    2637877  140.9   2637877  140.9
+    ## Vcells 179656683 1370.7  256132486 1954.2 213375539 1628.0
 
-Once we have identified cell populations, we can start the trajectory analysis using CellRouter. Once again, transitions between any cells states are possible. You can use your previously identified clusters, clusters identified by CellRouter or sorted populations to annotate the kNN graph that CellRouter uses to reconstruct single-cell trajectories. Below, we can build our kNN graph using clusters identified by Paul et al (column "celltype2") and identify trajectories between MPEP\_7 and GMP\_10, and the erythroid clusters (Ery\_1... Ery\_6) and the clusters GMP branch as N\_17 or N\_16. With CellRouter, transitions between any clusters can be identified. the plotKNN function plots the kNN graph using coordinates from a space of reduced dimensionality such as PCA, tSNE or custom.
------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Once we have identified cell populations, we can start the trajectory
+analysis using CellRouter. Once again, transitions between any cells
+states are possible. You can use your previously identified clusters,
+clusters identified by CellRouter or sorted populations to annotate the
+kNN graph that CellRouter uses to reconstruct single-cell trajectories.
+Below, we can build our kNN graph using clusters identified by Paul et
+al (column "celltype2") and identify trajectories between MPEP\_7 and
+GMP\_10, and the erythroid clusters (Ery\_1... Ery\_6) and the clusters
+GMP branch as N\_17 or N\_16. With CellRouter, transitions between any
+clusters can be identified. the plotKNN function plots the kNN graph
+using coordinates from a space of reduced dimensionality such as PCA,
+tSNE or custom.
 
 Make sure if define libdir correctly by specifying:
----------------------------------------------------
 
     libdir <- '~/path/to/library/folder/CellRouter/'
 
@@ -235,8 +258,8 @@ Make sure if define libdir correctly by specifying:
 
 ![](CellRouter_Paul_Tutorial_files/figure-markdown_strict/trajectory1-2.png)
 
-We will focus our trajectory analysis between clusters identified by CellRouter.
---------------------------------------------------------------------------------
+We will focus our trajectory analysis between clusters identified by
+CellRouter.
 
     #Here, we will identify trajectories between clusters identified by CellRouter
     cellrouter <- buildKNN(cellrouter, k = 10, column.ann = 'population', num.pcs = 20, sim.type = 'jaccard')
@@ -309,8 +332,9 @@ We will focus our trajectory analysis between clusters identified by CellRouter.
 
     cellrouter <- topGenes(cellrouter, 0.8, 0.1)
 
-Fit kinetic profiles to smoothen kinetic patterns and enhance clustering of complex transcriptional patterns, such as transient up or down-regulation
------------------------------------------------------------------------------------------------------------------------------------------------------
+Fit kinetic profiles to smoothen kinetic patterns and enhance clustering
+of complex transcriptional patterns, such as transient up or
+down-regulation
 
     cellrouter <- smoothDynamics(cellrouter, names)
     cellrouter <- clusterGenesPseudotime(cellrouter, 5)
@@ -323,7 +347,6 @@ Create gene regulatory network
     grn.data <- buildGRN(cellrouter, species = 'Mm', genes.use = rownames(cellrouter@ndata), zscore = 5, filename = 'results/GRN.R')
 
 Downstream analysis. Plot transcriptional clusters.
----------------------------------------------------
 
     #plot clusters of kinetic changes along trajectories
     plotClusterHeatmap(cellrouter, names, 10, 10, 2, 'results/dynamics.pdf')
@@ -345,7 +368,9 @@ Downstream analysis. Plot transcriptional clusters.
 
 ![](CellRouter_Paul_Tutorial_files/figure-markdown_strict/trajectory5-2.png)
 
-### Gene expression dynamics of selected genes in the erythroid branch. The object <cellrouter@top.correlations> contains genes that are highly correlated or anti-correlated with each trajectory
+Gene expression dynamics of selected genes in the erythroid branch. The
+object <cellrouter@top.correlations> contains genes that are highly
+correlated or anti-correlated with each trajectory
 
     #Erythroid branch (transition from cluster 6 to 2)
     genelist <- c('Gata2', 'Gata1', 'Car2', 'Klf1')
@@ -362,7 +387,6 @@ Downstream analysis. Plot transcriptional clusters.
 ![](CellRouter_Paul_Tutorial_files/figure-markdown_strict/trajectory6-3.png)
 
 Gene expression dynamics of selected genes in the GMP branch.
--------------------------------------------------------------
 
     #GMP branch (transition from cluster 6 to 7)
     genelist <- c('Mpo', 'Elane', 'Ctsg', 'Ly6c2')
@@ -379,7 +403,6 @@ Gene expression dynamics of selected genes in the GMP branch.
 ![](CellRouter_Paul_Tutorial_files/figure-markdown_strict/trajectory7-3.png)
 
 Branch-specific gene expression dynamics
-----------------------------------------
 
     plotbranch(cellrouter, 'up','6.2', '6.7', 1, width=3, height=4, filename='results/6.2_6.7_branch_dynamics.png')
 
@@ -389,8 +412,9 @@ Branch-specific gene expression dynamics
 
 ![](CellRouter_Paul_Tutorial_files/figure-markdown_strict/trajectory8-2.png)
 
-Integrate gene regulatory networks with gene expression dynamics along the trajectories to calculate a GRN score and identify putative regulators of these cell-fate transitions
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Integrate gene regulatory networks with gene expression dynamics along
+the trajectories to calculate a GRN score and identify putative
+regulators of these cell-fate transitions
 
     grn.data <- get(load('results/GRN.R'))
     transitions <- c('6.1','6.2', '6.7', '6.8') #transitions to be analyzed
@@ -399,8 +423,9 @@ Integrate gene regulatory networks with gene expression dynamics along the traje
 
 ![](CellRouter_Paul_Tutorial_files/figure-markdown_strict/trajectory9-1.png)
 
-Plot dynamics and derivative plots of top transcriptional regulators based on the GRN score. Also plot subnetworks for selected transcriptional regulators in the erythroid branch.
------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Plot dynamics and derivative plots of top transcriptional regulators
+based on the GRN score. Also plot subnetworks for selected
+transcriptional regulators in the erythroid branch.
 
     library('geomnet')
     p <- '6.2'
@@ -413,8 +438,9 @@ Plot dynamics and derivative plots of top transcriptional regulators based on th
 
 ![](CellRouter_Paul_Tutorial_files/figure-markdown_strict/trajectory10-2.png)
 
-Plot dynamics and derivative plots of top transcriptional regulators based on the GRN score. Also plot subnetworks for selected transcriptional regulators in the GMP branch.
------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Plot dynamics and derivative plots of top transcriptional regulators
+based on the GRN score. Also plot subnetworks for selected
+transcriptional regulators in the GMP branch.
 
     #dynamics of regulators along the transistion from cluster 6 to cluster 7 (GMP branch).
     p <- '6.7'

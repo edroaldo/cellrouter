@@ -224,7 +224,6 @@ setGeneric("findClusters", function(object, method='graph.clustering', k=20, num
 setMethod("findClusters",
           signature = "CellRouter",
           definition = function(object, method, k, num.pcs, sim.type){
-
             if(method=='graph.clustering'){
               cat('Graph-based clustering\n')
               cat('k: ', k, '\n')
@@ -280,7 +279,6 @@ setGeneric("graphClustering", function(object, k=5, num.pcs, sim.type="jaccard",
 setMethod("graphClustering",
           signature = "CellRouter",
           definition = function(object, k, num.pcs, sim.type, filename){
-
             library('cccd')
             library('proxy') # Library of similarity/dissimilarity measures for 'dist()'
             #matrix <- object@rdimension
@@ -395,7 +393,7 @@ setMethod("plotKNN",
             pdf(file=filename, width=width, height=height)
             g2 <- ggplot(g, aes(x = x, y = y, xend = xend, yend = yend)) +
               geom_edges(alpha=0.3) +
-              geom_nodes(aes(color = comms), size=1) +
+              geom_nodes(aes(color = factor(comms)), size=1) +
               theme_blank() + scale_color_manual("", values=colors) +
               guides(col=guide_legend(direction="vertical", keywidth = 0.75, keyheight = 0.85, override.aes = list(size=3)))
             plot(g2)
@@ -853,7 +851,7 @@ setMethod("buildGRN",
 #' @import ggplot2
 #' @export
 
-plotViolin <- function(object, geneList, column, cols, width=10, height=5, filename){
+plotViolin <- function(object, geneList, column, column.color, cols, width=10, height=5, filename){
   plots <- list()
   sampTab <- object@sampTab
   expDat <- object@ndata
@@ -868,7 +866,7 @@ plotViolin <- function(object, geneList, column, cols, width=10, height=5, filen
     allgenes <- rbind(allgenes, genes.m)
   }
 
-  colors <- unique(sampTab$colors)
+  colors <- unique(sampTab[[column.color]])
   names(colors) <- unique(sampTab[[column]])
   order <- unique(allgenes$conditions)
   order <- order[order(order, decreasing=FALSE)]
@@ -881,6 +879,7 @@ plotViolin <- function(object, geneList, column, cols, width=10, height=5, filen
           axis.ticks=element_blank(),
           axis.text.y=element_blank(),
           axis.ticks.y=element_blank(),
+          axis.text.x = element_text(angle = 60, hjust = 1),
           strip.text.y = element_text(angle=180),
           panel.border=element_rect(fill = NA, colour=alpha('black', 0.75),size=1),
           strip.background = element_rect(colour="white", fill="white"),
@@ -943,7 +942,7 @@ predictState <- function(object, columns, col.name){
 #' @param  bins #number of bins to split expression data
 #' @param genes.combine default is all genes in object@@ndata
 #' @export
-scoreGeneSets <- function(object, gene.list, bins=25, genes.combine=NULL){
+scoreGeneSets <- function(object, genes.list, bins=25, genes.combine=NULL){
   if(is.null(genes.combine)){
     genes.combine=rownames(object@ndata)
   }
@@ -984,7 +983,7 @@ scoreGeneSets <- function(object, gene.list, bins=25, genes.combine=NULL){
     #genes.scores[i, ] <- Matrix::colMeans(x = data.use)
   }
   scores <- genes.scores - ctrl.scores
-  rownames(scores) <- names(gene.list)#paste0(col.name, 1:cluster.length)
+  rownames(scores) <- names(genes.list)#paste0(col.name, 1:cluster.length)
   scores <- as.data.frame(t(scores))
   rownames(scores) <- colnames(object@ndata)
 
